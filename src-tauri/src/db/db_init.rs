@@ -1,4 +1,4 @@
-use duckdb::Connection;
+use duckdb::{params, Connection};
 use std::fs;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
@@ -32,6 +32,12 @@ fn initialize_schema(connection: &Connection) -> Result<(), String> {
                 value TEXT NOT NULL,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
+
+            CREATE TABLE IF NOT EXISTS greeted_people (
+                id INTEGER PRIMARY KEY,
+                name TEXT NOT NULL,
+                greeted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
             ",
         )
         .map_err(|e| format!("Failed to initialize DuckDB schema: {e}"))
@@ -46,4 +52,50 @@ pub fn setup_duckdb(app: &App) -> Result<(), String> {
     println!("DuckDB initialized at {}", db_path.display());
 
     Ok(())
+}
+
+pub fn save_greeting(state: &DuckDbState, name: &str) -> Result<(), String> {
+    let connection = state
+        .0
+        .lock()
+        .map_err(|_| "Failed to acquire DuckDB lock".to_string())?;
+
+    let next_id: i64 = connection
+        .query_row(
+            "SELECT COALESCE(MAX(id), 0) + 1 FROM greeted_people",
+            [],
+            |row| row.get(0),
+        )
+        .map_err(|e| format!("Failed to compute next greeting id: {e}"))?;
+
+    connection
+        .execute(
+            "INSERT INTO greeted_people (id, name) VALUES (?, ?)",
+            params![next_id, name],
+        )
+        .map_err(|e| format!("Failed to save greeting: {e}"))?;
+
+    Ok(())
+}
+
+pub fn list_greeted_people(state: &DuckDbState) -> Result<Vec<String>, String> {
+    let connection = state
+        .0
+        .lock()
+        .map_err(|_| "Failed to acquire DuckDB lock".to_string())?;
+
+    let mut statement = connection
+        .prepare("SELECT name FROM greeted_people ORDER BY greeted_at DESC")
+        .map_err(|e| format!("Failed to prepare greeted people query: {e}"))?;
+
+    let rows = statement
+        .query_map([], |row| row.get::<usize, String>(0))
+        .map_err(|e| format!("Failed to query greeted people: {e}"))?;
+
+    let mut names = Vec::new();
+    for row in rows {
+        names.push(row.map_err(|e| format!("Failed to read greeted person row: {e}"))?);
+    }
+
+    Ok(names)
 }
