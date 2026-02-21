@@ -54,6 +54,9 @@ pub fn setup_duckdb(app: &App) -> Result<(), String> {
     Ok(())
 }
 
+
+// Sample Querries:
+
 pub fn save_greeting(state: &DuckDbState, name: &str) -> Result<(), String> {
     let connection = state
         .0
@@ -75,7 +78,7 @@ pub fn save_greeting(state: &DuckDbState, name: &str) -> Result<(), String> {
         )
         .map_err(|e| format!("Failed to save greeting: {e}"))?;
 
-    Ok(())
+    Ok(()) 
 }
 
 pub fn list_greeted_people(state: &DuckDbState) -> Result<Vec<String>, String> {
