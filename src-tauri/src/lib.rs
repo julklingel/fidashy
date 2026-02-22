@@ -1,21 +1,9 @@
 mod db;
 
-use tauri::State;
+#[macro_use]
+pub mod commands;
+pub mod sample;
 
-#[tauri::command]
-fn greet(name: &str) -> String {
-    format!("Hello, {}! You've been greeted from Rust!", name)
-}
-
-#[tauri::command]
-fn save_greeting(name: &str, db_state: State<db::DuckDbState>) -> Result<(), String> {
-    db::save_greeting(&db_state, name)
-}
-
-#[tauri::command]
-fn list_greeted_people(db_state: State<db::DuckDbState>) -> Result<Vec<String>, String> {
-    db::list_greeted_people(&db_state)
-}
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -27,7 +15,7 @@ pub fn run() {
     });
 
     builder
-        .invoke_handler(tauri::generate_handler![greet, save_greeting, list_greeted_people])
+        .invoke_handler(get_commands!())
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
