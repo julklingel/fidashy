@@ -28,7 +28,7 @@
         id: `group-${index}-${files.map((file) => file.path).join("|")}`,
         headers: group.headers,
         files,
-        duplicateRows: 0,
+        duplicateRows: group.duplicate_rows,
       };
     });
   }

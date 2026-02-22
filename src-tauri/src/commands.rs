@@ -14,6 +14,9 @@ macro_rules! get_commands {
             $crate::sample::controller::list_greeted_people,
             // CSV Ingestion
             $crate::csv_ingestion::controller::process_csv_files,
+            $crate::csv_ingestion::controller::merge_csv_group,
+            $crate::csv_ingestion::controller::create_table_from_csv_group,
+            $crate::csv_ingestion::controller::merge_csv_group_into_existing_table,
             
         ]
     };

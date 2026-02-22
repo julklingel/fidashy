@@ -1,9 +1,18 @@
 <script lang="ts">
   import { onDestroy } from "svelte";
+  import { invoke } from "@tauri-apps/api/core";
   import CsvNextStepCard from "./CsvNextStepCard.svelte";
   import CsvProcessResultsCard from "./CsvProcessResultsCard.svelte";
   import CsvUploadActionCard from "./CsvUploadActionCard.svelte";
-  import type { GroupMergeStatus, MergeState, ProcessedPayload, SchemaGroup } from "./csv-types";
+  import { toast } from "$lib/components/ui/sonner/sonner";
+  import type {
+    GroupMergeStatus,
+    MergeCsvGroupResult,
+    MergeState,
+    NextStepDecision,
+    ProcessedPayload,
+    SchemaGroup,
+  } from "./csv-types";
 
   const MERGE_PROGRESS_INTERVAL_MS = 120;
   const MERGE_PROGRESS_STEP = 20;
@@ -18,10 +27,12 @@
     step: "upload" | "results" | "next";
     groups: SchemaGroup[];
     mergeState: MergeState;
+    decisions: NextStepDecision[];
   }>({
     step: "upload",
     groups: [],
     mergeState: { groups: {} },
+    decisions: [],
   });
 
   const mergeTimers = new Map<string, ReturnType<typeof setInterval>>();
@@ -68,12 +79,14 @@
 
     flowState.groups = [];
     flowState.mergeState = { groups: {} };
+    flowState.decisions = [];
     flowState.step = "upload";
   }
 
   function handleProcessed(payload: ProcessedPayload) {
     flowState.groups = payload.groups;
     flowState.mergeState = buildInitialMergeState(payload.groups);
+    flowState.decisions = [];
     flowState.step = payload.groups.length === 0 ? "next" : "results";
   }
 
@@ -98,6 +111,11 @@
       return;
     }
 
+    const group = flowState.groups.find((item) => item.id === groupId);
+    if (!group) {
+      return;
+    }
+
     flowState.mergeState.groups[groupId] = {
       ...current,
       isMerging: true,
@@ -117,13 +135,48 @@
         ...state,
         progress: nextProgress,
       };
-
-      if (nextProgress >= 100) {
-        finalizeGroupDecision(groupId, "merged");
-      }
     }, MERGE_PROGRESS_INTERVAL_MS);
 
     mergeTimers.set(groupId, timer);
+
+    invoke<MergeCsvGroupResult>("merge_csv_group", {
+      paths: group.files.map((file) => file.path),
+    })
+      .then((result) => {
+        clearMergeTimer(groupId);
+        const state = getGroupStatus(groupId);
+        flowState.mergeState.groups[groupId] = {
+          ...state,
+          isMerging: false,
+          progress: 100,
+          status: "merged",
+        };
+
+        flowState.decisions = [
+          ...flowState.decisions,
+          {
+            groupId,
+            fileNames: group.files.map((file) => file.name),
+            filePaths: group.files.map((file) => file.path),
+            mergeResult: result,
+          },
+        ];
+
+        toast(`Merged ${result.input_rows} row(s), removed ${result.duplicate_rows_removed} duplicate row(s).`);
+        finalizeGroupDecision(groupId, "merged");
+      })
+      .catch((error) => {
+        clearMergeTimer(groupId);
+        const state = getGroupStatus(groupId);
+        flowState.mergeState.groups[groupId] = {
+          ...state,
+          isMerging: false,
+          progress: 0,
+          status: "idle",
+        };
+
+        toast(`Failed to merge files: ${String(error)}`);
+      });
   }
 
   function handleCancel(groupId: string) {
@@ -132,6 +185,14 @@
 
   function handleCancelResultsStep() {
     resetToUploadStep();
+  }
+
+  function handleCancelNextStep() {
+    resetToUploadStep();
+  }
+
+  function handleDecisionCompleted(groupId: string) {
+    flowState.decisions = flowState.decisions.filter((decision) => decision.groupId !== groupId);
   }
 </script>
 
@@ -148,6 +209,10 @@
       onCancelStep={handleCancelResultsStep}
     />
   {:else}
-    <CsvNextStepCard />
+    <CsvNextStepCard
+      decisions={flowState.decisions}
+      onCancel={handleCancelNextStep}
+      onDecisionCompleted={handleDecisionCompleted}
+    />
   {/if}
 </div>

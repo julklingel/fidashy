@@ -1,5 +1,42 @@
 use crate::csv_ingestion::models;
+use polars::prelude::*;
 use std::collections::BTreeMap;
+use std::fmt::Display;
+
+fn with_context<T, E: Display>(result: Result<T, E>, context: &str) -> Result<T, String> {
+    result.map_err(|e| format!("{context}: {e}"))
+}
+
+fn scan_csv_lazy(path: &str) -> Result<LazyFrame, String> {
+    with_context(
+        LazyCsvReader::new(PlRefPath::new(path))
+            .with_has_header(true)
+            .with_encoding(CsvEncoding::LossyUtf8)
+            .with_ignore_errors(true)
+            .finish(),
+        "Failed to scan CSV file for group operations",
+    )
+}
+
+pub fn combine_paths_lazy(paths: &[String]) -> Result<LazyFrame, String> {
+    if paths.is_empty() {
+        return Err("No files found in matching group".to_string());
+    }
+
+    let lazy_frames: Vec<LazyFrame> = paths
+        .iter()
+        .map(|path| scan_csv_lazy(path))
+        .collect::<Result<Vec<_>, _>>()?;
+
+    with_context(
+        concat(lazy_frames, UnionArgs::default()),
+        "Failed to combine CSV lazy frames",
+    )
+}
+
+pub fn combine_group_frames_lazy(group: &models::MatchingHeaderGroup) -> Result<LazyFrame, String> {
+    combine_paths_lazy(&group.file_paths)
+}
 
 pub fn group_files_with_matching_headers(
     files: &[models::CsvFileSchemaInfo],
@@ -12,6 +49,7 @@ pub fn group_files_with_matching_headers(
             .or_insert_with(|| models::MatchingHeaderGroup {
                 headers: file.headers.clone(),
                 file_paths: Vec::new(),
+                duplicate_rows: 0,
             });
 
         group.file_paths.push(file.path.clone());
