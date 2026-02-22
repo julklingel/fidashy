@@ -1,4 +1,6 @@
 <script lang="ts">
+  import CsvInfoHover from './CsvInfoHover.svelte';
+
   import { invoke } from "@tauri-apps/api/core";
   import { open } from "@tauri-apps/plugin-dialog";
   import Info from "@lucide/svelte/icons/info";
@@ -14,10 +16,12 @@
   type ProcessCsvResult = {
     processed_files: number;
     files: { path: string; headers: string[] }[];
+    matching_header_groups: { headers: string[]; file_paths: string[] }[];
   };
 
   let selectedFiles = $state<SelectedCsvFile[]>([]);
   let processedFiles = $state<{ path: string; name: string; headers: string[] }[]>([]);
+  let matchingHeaderGroups = $state<{ headers: string[]; fileNames: string[] }[]>([]);
 
   async function pickCsvFiles() {
     const selection = await open({
@@ -66,6 +70,11 @@
         headers: file.headers,
       }));
 
+      matchingHeaderGroups = result.matching_header_groups.map((group) => ({
+        headers: group.headers,
+        fileNames: group.file_paths.map((path) => path.split(/[\\/]/).pop() ?? path),
+      }));
+
       toast(`Processed ${result.processed_files} CSV file(s).`);
       clearFiles();
     } catch (error) {
@@ -78,19 +87,9 @@
   <form class="space-y-4" onsubmit={uploadFile}>
     <div class="flex flex-col justify-center justify-items-center space-y-2">
       <div class="flex items-center gap-2">
+      <CsvInfoHover/>
         <p class="text-sm my-2 font-medium">Process CSV files</p>
-        <div class="group relative inline-flex">
-          <button
-            type="button"
-            class="inline-flex h-5 w-5 items-center justify-center rounded-full border border-input text-muted-foreground"
-            aria-label="How CSV processing works"
-          >
-            <Info class="h-3.5 w-3.5" />
-          </button>
-          <div class="pointer-events-none absolute left-0 top-6 z-10 hidden w-64 rounded-md border bg-popover p-3 text-xs text-popover-foreground shadow-md group-hover:block">
-            Pick one or more CSV files. When you press Process, the app reads each provided file path and runs Polars checks on the CSV files.
-          </div>
-        </div>
+    
       </div>
       <Button type="button" variant="outline" class="w-full" onclick={pickCsvFiles}>Choose CSV files</Button>
       {#if selectedFiles.length > 0}
@@ -133,6 +132,20 @@
             {:else}
               <p class="text-muted-foreground">No headers found.</p>
             {/if}
+          </li>
+        {/each}
+      </ul>
+    </div>
+  {/if}
+
+  {#if matchingHeaderGroups.length > 0}
+    <div class="space-y-2 border-t pt-4">
+      <p class="text-sm font-medium">Matching header groups</p>
+      <ul class="space-y-2 text-sm">
+        {#each matchingHeaderGroups as group}
+          <li class="rounded-md border px-3 py-2">
+            <p class="text-muted-foreground wrap-break-word">Headers: {group.headers.join(", ")}</p>
+            <p class="font-medium">Files: {group.fileNames.join(", ")}</p>
           </li>
         {/each}
       </ul>
