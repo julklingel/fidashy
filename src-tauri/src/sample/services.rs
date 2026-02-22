@@ -3,7 +3,6 @@ use crate::db::DuckDbState;
 use duckdb::params;
 
 
-
 pub fn save_greeting(db_state: &DuckDbState, name: &str) -> Result<(), String> {
     db_state.with_db(|db| {
         let next_id: i64 = db
@@ -12,13 +11,13 @@ pub fn save_greeting(db_state: &DuckDbState, name: &str) -> Result<(), String> {
                 [],
                 |row| row.get(0),
             )
-            .map_err(|e| format!("Failed to compute next greeting id: {e}"))?;
+            .map_err(|e| e.to_string())?;
 
         db.execute(
             "INSERT INTO greeted_people (id, name) VALUES (?, ?)",
             params![next_id, name],
         )
-        .map_err(|e| format!("Failed to save greeting: {e}"))?;
+        .map_err(|e| e.to_string())?;
 
         Ok(())
     })
@@ -26,18 +25,14 @@ pub fn save_greeting(db_state: &DuckDbState, name: &str) -> Result<(), String> {
 
 pub fn list_greeted_people(db_state: &DuckDbState) -> Result<Vec<String>, String> {
     db_state.with_db(|db| {
-        let mut statement = db
-            .prepare("SELECT name FROM greeted_people ORDER BY greeted_at DESC")
-            .map_err(|e| format!("Failed to prepare greeted people query: {e}"))?;
+        let mut sql_stmt = db.prepare("SELECT name FROM greeted_people ORDER BY greeted_at DESC")
+            .map_err(|e| e.to_string())?;
 
-        let rows = statement
-            .query_map([], |row| row.get::<usize, String>(0))
-            .map_err(|e| format!("Failed to query greeted people: {e}"))?;
-
-        let mut names = Vec::new();
-        for row in rows {
-            names.push(row.map_err(|e| format!("Failed to read greeted person row: {e}"))?);
-        }
+        let names = sql_stmt
+            .query_map([], |row| row.get::<_, String>(0)) 
+            .map_err(|e| e.to_string())?
+            .collect::<Result<Vec<_>, _>>() 
+            .map_err(|e| e.to_string())?;
 
         Ok(names)
     })
