@@ -2,12 +2,15 @@ mod db;
 
 #[macro_use]
 pub mod commands;
+pub mod csv_ingestion;
 pub mod sample;
 
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    let builder = tauri::Builder::default().plugin(tauri_plugin_opener::init());
+    let builder = tauri::Builder::default()
+        .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_dialog::init());
 
     let builder = builder.setup(|app| {
         db::setup_duckdb(app).map_err(std::io::Error::other)?;

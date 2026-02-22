@@ -12,6 +12,8 @@ macro_rules! get_commands {
             $crate::sample::controller::greet,
             $crate::sample::controller::save_greeting,
             $crate::sample::controller::list_greeted_people,
+            // CSV Ingestion
+            $crate::csv_ingestion::controller::process_csv_files,
             
         ]
     };
