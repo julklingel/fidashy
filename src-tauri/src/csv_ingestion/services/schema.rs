@@ -1,12 +1,5 @@
 use crate::csv_ingestion::models;
 use crate::csv_ingestion::services::data_sniff;
-pub use crate::csv_ingestion::services::data_sniff::{
-    infer_csv_schema,
-    infer_csv_schema_with_sniffed_separator,
-    infer_dataframe_schema,
-    InferredColumn,
-    InferredType,
-};
 use polars::prelude::*;
 use std::collections::hash_map::DefaultHasher;
 use std::fmt::Display;

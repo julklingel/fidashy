@@ -198,7 +198,7 @@
 
 <div class="w-full max-w-md space-y-4">
   {#if flowState.step === "upload"}
-    <h1 class="mb-4 text-center text-3xl font-semibold">Welcome to Fidashy</h1>
+ 
     <CsvUploadActionCard onProcessed={handleProcessed} />
   {:else if flowState.step === "results"}
     <CsvProcessResultsCard

@@ -23,7 +23,7 @@ fn scan_csv_lazy(path: &str) -> Result<LazyFrame, String> {
     )
 }
 
-pub fn combine_paths_lazy(paths: &[String]) -> Result<LazyFrame, String> {
+pub(crate) fn combine_paths_lazy(paths: &[String]) -> Result<LazyFrame, String> {
     if paths.is_empty() {
         return Err("No files found in matching group".to_string());
     }
@@ -37,10 +37,6 @@ pub fn combine_paths_lazy(paths: &[String]) -> Result<LazyFrame, String> {
         concat(lazy_frames, UnionArgs::default()),
         "Failed to combine CSV lazy frames",
     )
-}
-
-pub fn combine_group_frames_lazy(group: &models::MatchingHeaderGroup) -> Result<LazyFrame, String> {
-    combine_paths_lazy(&group.file_paths)
 }
 
 pub fn group_files_with_matching_headers(
