@@ -2,6 +2,7 @@ use std::sync::{Arc, Mutex};
 use duckdb::Connection;
 
 #[allow(dead_code)]
+#[derive(Clone)]
 pub struct DuckDbState(pub Arc<Mutex<Connection>>);
 
 impl DuckDbState {
@@ -23,11 +24,5 @@ CREATE TABLE IF NOT EXISTS app_meta (
     key TEXT PRIMARY KEY,
     value TEXT NOT NULL,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE IF NOT EXISTS greeted_people (
-    id INTEGER PRIMARY KEY,
-    name TEXT NOT NULL,
-    greeted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 "#;

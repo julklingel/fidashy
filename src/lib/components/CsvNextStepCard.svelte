@@ -1,10 +1,15 @@
 <script lang="ts">
+  import { onDestroy } from "svelte";
   import { invoke } from "@tauri-apps/api/core";
   import type { NextStepDecision } from "./csv-types";
   import { Button } from "$lib/components/ui/button";
   import { Card } from "$lib/components/ui/card";
+  import { Progress } from "$lib/components/ui/progress";
   import { toast } from "$lib/components/ui/sonner/sonner";
   import type { CsvIngestionWriteResult } from "./csv-types";
+
+  const ACTION_PROGRESS_INTERVAL_MS = 120;
+  const ACTION_PROGRESS_STEP = 10;
 
   let {
     decisions = [],
@@ -18,9 +23,55 @@
 
   let busyGroups = $state<Record<string, boolean>>({});
   let suggestedTableNames = $state<Record<string, string>>({});
+  let groupProgress = $state<Record<string, number>>({});
+
+  const progressTimers = new Map<string, ReturnType<typeof setInterval>>();
+
+  onDestroy(() => {
+    for (const timer of progressTimers.values()) {
+      clearInterval(timer);
+    }
+    progressTimers.clear();
+  });
 
   function isBusy(groupId: string): boolean {
     return busyGroups[groupId] ?? false;
+  }
+
+  function getProgress(groupId: string): number {
+    return groupProgress[groupId] ?? 0;
+  }
+
+  function clearGroupProgressTimer(groupId: string) {
+    const timer = progressTimers.get(groupId);
+    if (!timer) {
+      return;
+    }
+
+    clearInterval(timer);
+    progressTimers.delete(groupId);
+  }
+
+  function startGroupProgress(groupId: string) {
+    clearGroupProgressTimer(groupId);
+    groupProgress[groupId] = 10;
+
+    const timer = setInterval(() => {
+      const current = groupProgress[groupId] ?? 0;
+      groupProgress[groupId] = Math.min(90, current + ACTION_PROGRESS_STEP);
+    }, ACTION_PROGRESS_INTERVAL_MS);
+
+    progressTimers.set(groupId, timer);
+  }
+
+  function finishGroupProgress(groupId: string) {
+    clearGroupProgressTimer(groupId);
+    groupProgress[groupId] = 100;
+  }
+
+  function resetGroupProgress(groupId: string) {
+    clearGroupProgressTimer(groupId);
+    groupProgress[groupId] = 0;
   }
 
   function getSuggestedTableName(groupId: string): string {
@@ -29,17 +80,20 @@
 
   async function createNewTable(decision: NextStepDecision) {
     busyGroups[decision.groupId] = true;
+    startGroupProgress(decision.groupId);
     try {
       const suggestedTableName = getSuggestedTableName(decision.groupId).trim();
       const result = await invoke<CsvIngestionWriteResult>("create_table_from_csv_group", {
         paths: decision.filePaths,
         suggestedTableName: suggestedTableName.length > 0 ? suggestedTableName : null,
       });
+      finishGroupProgress(decision.groupId);
       toast(
         `Created table ${result.table_name}. Inserted ${result.rows_inserted} row(s), skipped ${result.rows_skipped_duplicates} duplicate row(s).`
       );
       onDecisionCompleted?.(decision.groupId);
     } catch (error) {
+      resetGroupProgress(decision.groupId);
       toast(`Failed to create table: ${String(error)}`);
     } finally {
       busyGroups[decision.groupId] = false;
@@ -54,16 +108,19 @@
     }
 
     busyGroups[decision.groupId] = true;
+    startGroupProgress(decision.groupId);
     try {
       const result = await invoke<CsvIngestionWriteResult>("merge_csv_group_into_existing_table", {
         paths: decision.filePaths,
         tableName,
       });
+      finishGroupProgress(decision.groupId);
       toast(
         `Merged into ${result.table_name}. Inserted ${result.rows_inserted} row(s), skipped ${result.rows_skipped_duplicates} duplicate row(s).`
       );
       onDecisionCompleted?.(decision.groupId);
     } catch (error) {
+      resetGroupProgress(decision.groupId);
       toast(`Failed to merge with existing table: ${String(error)}`);
     } finally {
       busyGroups[decision.groupId] = false;
@@ -119,6 +176,11 @@
               <p class="text-muted-foreground">
                 Potential duplicates between DB and merged CSV: {decision.mergeResult.duplicate_rows_with_db}
               </p>
+              {#if isBusy(decision.groupId)}
+                <div class="min-w-32 flex-1">
+                  <Progress value={getProgress(decision.groupId)} class="h-2" />
+                </div>
+              {/if}
               <div class="flex gap-2">
                 <Button
                   type="button"
@@ -140,6 +202,11 @@
               </div>
             {:else}
               <p class="text-muted-foreground">No matching table shape found in DuckDB.</p>
+              {#if isBusy(decision.groupId)}
+                <div class="min-w-32 flex-1">
+                  <Progress value={getProgress(decision.groupId)} class="h-2" />
+                </div>
+              {/if}
               <Button
                 type="button"
                 class="h-8 px-3 text-xs"

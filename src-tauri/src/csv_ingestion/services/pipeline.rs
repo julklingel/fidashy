@@ -61,9 +61,16 @@ fn auto_table_name(merged_headers: &[String]) -> String {
 
 fn dataframe_row_to_key(row: &[AnyValue<'_>]) -> String {
     row.iter()
-        .map(|value| value.to_string())
+        .map(any_value_to_key_part)
         .collect::<Vec<_>>()
         .join("\u{1f}")
+}
+
+fn any_value_to_key_part(value: &AnyValue<'_>) -> String {
+    match value {
+        AnyValue::Null => "<NULL>".to_string(),
+        _ => value.to_string(),
+    }
 }
 
 fn any_value_to_db_string(value: &AnyValue<'_>) -> Option<String> {
@@ -161,7 +168,7 @@ fn load_existing_row_keys(
 ) -> Result<HashSet<String>, String> {
     let selected_columns = merged_headers
         .iter()
-        .map(|column| quote_identifier(column))
+        .map(|column| format!("CAST({} AS VARCHAR)", quote_identifier(column)))
         .collect::<Vec<_>>()
         .join(", ");
     let sql = format!("SELECT {selected_columns} FROM {}", quote_identifier(table_name));
@@ -333,7 +340,7 @@ fn dataframe_rows_to_keyset(df: &polars::prelude::DataFrame) -> Result<HashSet<S
         let row_key = row
             .0
             .iter()
-            .map(|value| value.to_string())
+            .map(any_value_to_key_part)
             .collect::<Vec<_>>()
             .join("\u{1f}");
 
@@ -356,7 +363,7 @@ fn count_duplicates_with_table(
 
     let selected_columns = merged_headers
         .iter()
-        .map(|column| quote_identifier(column))
+        .map(|column| format!("CAST({} AS VARCHAR)", quote_identifier(column)))
         .collect::<Vec<_>>()
         .join(", ");
     let sql = format!("SELECT {selected_columns} FROM {}", quote_identifier(table_name));
@@ -432,8 +439,6 @@ pub fn process_csv_files(paths: Vec<String>) -> Result<models::ProcessCsvResult,
         matching_header_groups,
     })
 }
-
-
 
 
 pub fn merge_csv_group(paths: Vec<String>, db_state: &DuckDbState) -> Result<models::MergeCsvGroupResult, String> {
