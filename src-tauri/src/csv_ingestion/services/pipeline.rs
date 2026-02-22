@@ -14,12 +14,12 @@ pub fn process_csv_files(paths: Vec<String>) -> Result<models::ProcessCsvResult,
         .map(schema::collect_file_schema)
         .collect::<Result<Vec<_>, _>>()?;
 
-    let dedup_report = dedup::DedupReport {
-        in_batch_duplicates: dedup::detect_in_batch_duplicates(&files_with_schema),
-        in_database_duplicates: dedup::detect_database_duplicates(&files_with_schema)?,
-    };
+    // let dedup_report = dedup::DedupReport {
+    //     in_batch_duplicates: dedup::detect_in_batch_duplicates(&files_with_schema),
+    //     in_database_duplicates: dedup::detect_database_duplicates(&files_with_schema)?,
+    // };
 
-    let _ = dedup_report.in_batch_duplicates.len() + dedup_report.in_database_duplicates.len();
+    // let _ = dedup_report.in_batch_duplicates.len() + dedup_report.in_database_duplicates.len();
 
     let processed_files = files_with_schema.len();
     let files = files_with_schema
