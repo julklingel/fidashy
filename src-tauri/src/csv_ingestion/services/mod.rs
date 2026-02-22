@@ -1,4 +1,4 @@
-pub mod csv_format;
+pub mod data_sniff;
 pub mod dedup;
 pub mod grouping;
 pub mod pipeline;

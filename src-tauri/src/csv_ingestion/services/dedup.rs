@@ -33,8 +33,8 @@ fn count_duplicates_from_lazy_frame(combined_lf: LazyFrame) -> Result<usize, Str
 }
 
 pub fn build_merged_deduplicated_frame(paths: &[String]) -> Result<MergeDedupComputation, String> {
-    if paths.len() < 2 {
-        return Err("At least two files are required to merge a group".to_string());
+    if paths.is_empty() {
+        return Err("At least one file is required to process CSV data".to_string());
     }
 
     let combined_lf = grouping::combine_paths_lazy(paths)?;

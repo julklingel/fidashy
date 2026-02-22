@@ -31,6 +31,7 @@ export type MergeState = {
 export type ProcessedPayload = {
   processedFiles: number;
   groups: SchemaGroup[];
+  singleDecisions: NextStepDecision[];
 };
 
 export type MergeCsvGroupResult = {

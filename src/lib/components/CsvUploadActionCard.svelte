@@ -1,6 +1,13 @@
 <script lang="ts">
   import CsvInfoHover from "./CsvInfoHover.svelte";
-  import type { ProcessCsvResult, ProcessedPayload, SchemaGroup, SelectedCsvFile } from "./csv-types";
+  import type {
+    MergeCsvGroupResult,
+    NextStepDecision,
+    ProcessCsvResult,
+    ProcessedPayload,
+    SchemaGroup,
+    SelectedCsvFile,
+  } from "./csv-types";
   import { invoke } from "@tauri-apps/api/core";
   import { open } from "@tauri-apps/plugin-dialog";
   import { Button } from "$lib/components/ui/button/index.js";
@@ -31,6 +38,33 @@
         duplicateRows: group.duplicate_rows,
       };
     });
+  }
+
+  async function buildSingleDecisions(
+    result: ProcessCsvResult,
+    files: SelectedCsvFile[]
+  ): Promise<NextStepDecision[]> {
+    const groupedPaths = new Set(
+      result.matching_header_groups.flatMap((group) => group.file_paths)
+    );
+    const singleFiles = files.filter((file) => !groupedPaths.has(file.path));
+
+    const decisions = await Promise.all(
+      singleFiles.map(async (file) => {
+        const mergeResult = await invoke<MergeCsvGroupResult>("merge_csv_group", {
+          paths: [file.path],
+        });
+
+        return {
+          groupId: `single-${file.path}`,
+          fileNames: [file.name],
+          filePaths: [file.path],
+          mergeResult,
+        } satisfies NextStepDecision;
+      })
+    );
+
+    return decisions;
   }
 
   function addSelectedPaths(paths: string[]) {
@@ -74,10 +108,12 @@
       const result = await invoke<ProcessCsvResult>("process_csv_files", {
         paths: selectedFiles.map((file) => file.path),
       });
+      const singleDecisions = await buildSingleDecisions(result, selectedFiles);
 
       onProcessed({
         processedFiles: result.processed_files,
         groups: buildGroups(result),
+        singleDecisions,
       });
 
       toast(`Processed ${result.processed_files} CSV file(s).`);

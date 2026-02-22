@@ -1,5 +1,5 @@
 use crate::csv_ingestion::models;
-use crate::csv_ingestion::services::csv_format;
+use crate::csv_ingestion::services::data_sniff;
 use polars::prelude::*;
 use std::path::Path;
 use std::collections::BTreeMap;
@@ -10,7 +10,7 @@ fn with_context<T, E: Display>(result: Result<T, E>, context: &str) -> Result<T,
 }
 
 fn scan_csv_lazy(path: &str) -> Result<LazyFrame, String> {
-    let separator = csv_format::sniff_separator(Path::new(path))?;
+    let separator = data_sniff::sniff_separator(Path::new(path))?;
 
     with_context(
         LazyCsvReader::new(PlRefPath::new(path))

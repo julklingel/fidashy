@@ -86,7 +86,7 @@
   function handleProcessed(payload: ProcessedPayload) {
     flowState.groups = payload.groups;
     flowState.mergeState = buildInitialMergeState(payload.groups);
-    flowState.decisions = [];
+    flowState.decisions = payload.singleDecisions;
     flowState.step = payload.groups.length === 0 ? "next" : "results";
   }
 
