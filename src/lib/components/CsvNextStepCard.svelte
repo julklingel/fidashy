@@ -17,17 +17,23 @@
   } = $props();
 
   let busyGroups = $state<Record<string, boolean>>({});
+  let suggestedTableNames = $state<Record<string, string>>({});
 
   function isBusy(groupId: string): boolean {
     return busyGroups[groupId] ?? false;
   }
 
+  function getSuggestedTableName(groupId: string): string {
+    return suggestedTableNames[groupId] ?? "";
+  }
+
   async function createNewTable(decision: NextStepDecision) {
     busyGroups[decision.groupId] = true;
     try {
+      const suggestedTableName = getSuggestedTableName(decision.groupId).trim();
       const result = await invoke<CsvIngestionWriteResult>("create_table_from_csv_group", {
         paths: decision.filePaths,
-        suggestedTableName: null,
+        suggestedTableName: suggestedTableName.length > 0 ? suggestedTableName : null,
       });
       toast(
         `Created table ${result.table_name}. Inserted ${result.rows_inserted} row(s), skipped ${result.rows_skipped_duplicates} duplicate row(s).`
@@ -88,6 +94,23 @@
             <p class="text-muted-foreground">
               New DataFrame shape: {decision.mergeResult.merged_rows} rows × {decision.mergeResult.merged_columns} columns
             </p>
+            <div class="space-y-1">
+              <label for={`table-name-${decision.groupId}`} class="text-xs text-muted-foreground">
+                New table name (optional)
+              </label>
+              <input
+                id={`table-name-${decision.groupId}`}
+                type="text"
+                class="h-8 w-full rounded-md border bg-background px-2 text-xs"
+                placeholder="Auto-generate if empty"
+                value={getSuggestedTableName(decision.groupId)}
+                oninput={(event) => {
+                  const target = event.currentTarget as HTMLInputElement;
+                  suggestedTableNames[decision.groupId] = target.value;
+                }}
+                disabled={isBusy(decision.groupId)}
+              />
+            </div>
 
             {#if decision.mergeResult.matching_table_name}
               <p class="text-muted-foreground">

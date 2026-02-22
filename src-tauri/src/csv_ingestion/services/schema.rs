@@ -1,4 +1,5 @@
 use crate::csv_ingestion::models;
+use crate::csv_ingestion::services::csv_format;
 use polars::prelude::*;
 use std::collections::hash_map::DefaultHasher;
 use std::fmt::Display;
@@ -25,9 +26,11 @@ fn ensure_csv_extension(path: &Path) -> Result<(), String> {
 
 fn collect_headers_with_polars(source_path: &Path) -> Result<(Vec<String>, u64), String> {
     let source_path_str = source_path.to_string_lossy();
+    let separator = csv_format::sniff_separator(source_path)?;
     let mut lazy_frame = with_context(
         LazyCsvReader::new(PlRefPath::new(source_path_str.as_ref()))
             .with_has_header(true)
+            .with_separator(separator)
             .with_n_rows(Some(0))
             .finish(),
         "Failed to build lazy CSV reader with Polars",

@@ -1,3 +1,4 @@
+pub mod csv_format;
 pub mod dedup;
 pub mod grouping;
 pub mod pipeline;

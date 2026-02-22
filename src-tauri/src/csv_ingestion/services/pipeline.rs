@@ -472,6 +472,8 @@ pub fn create_table_from_csv_group(
 
     let table_name = suggested_table_name
         .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
         .map(sanitize_identifier)
         .filter(|value| !value.is_empty())
         .unwrap_or_else(|| auto_table_name(&merge.merged_headers));
