@@ -4,6 +4,7 @@ export type SelectedCsvFile = {
 };
 
 export type GroupWithDuplicates = {
+  group_id: string;
   paths: string[];
   duplicate_count: number;
   total_entries: number;

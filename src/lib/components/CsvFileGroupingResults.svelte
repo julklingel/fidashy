@@ -13,11 +13,11 @@
 	const groupedPathsCount = $derived(groupedPaths.length);
 	let isMerging = $state(false);
 
-	async function mergeGroup(paths: string[]) {
+	async function mergeGroup(groupId: string) {
 		if (isMerging) return;
 		isMerging = true;
 		try {
-			const result = await invoke<string>("merge_csv", { paths });
+			const result = await invoke<string>("merge_csv", { groupId });
 			if (result === "ok") {
 				toast.success("Merge completed.");
 				return;
@@ -50,7 +50,7 @@
 								- {group.paths.length} files - {group.duplicate_count}
 								duplicates / {group.total_entries} total entries
 							</div>
-							<Button size="sm" onclick={() => mergeGroup(group.paths)} disabled={isMerging}>
+							<Button size="sm" onclick={() => mergeGroup(group.group_id)} disabled={isMerging}>
 								{isMerging ? "Merging..." : "Merge"}
 							</Button>
 						</div>
