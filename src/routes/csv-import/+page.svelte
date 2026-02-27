@@ -4,9 +4,7 @@ import CsvFileSelectionAndGroupingCard from "$lib/components/CsvFileSelectionAnd
 
   let groupedPaths = $state<string[][]>([]);
   const groupedPathsCount = $derived(groupedPaths.length);
-  const hasGroupBiggerThanTwo = $derived(
-    groupedPaths.some((group) => group.length > 1)
-  );
+
 
 
   
@@ -16,7 +14,7 @@ import CsvFileSelectionAndGroupingCard from "$lib/components/CsvFileSelectionAnd
 <section class="flex min-h-screen flex-col items-center justify-center bg-background px-4 py-8">
   
 
-    {#if !hasGroupBiggerThanTwo}
+    {#if groupedPathsCount < 1}
     <CsvFileSelectionAndGroupingCard bind:groupedPaths />
     {:else}
     <CsvFileGroupingResults {groupedPaths} /> 

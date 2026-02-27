@@ -13,6 +13,8 @@
   const groupedPathsCount = $derived(groupedPaths.length);
 
 
+
+
 </script>
 
 
@@ -24,7 +26,7 @@
 					{#each groupedPaths as group, index}
                     {#if group.length > 1}
 						<li class="rounded-sm border px-2 py-1 text-xs">
-							<div class="mb-1 font-medium">Group {index + 1} ({group.length} file(s))</div>
+							<div class="mb-1 font-medium"><span class=" font-semibold">Group {index + 1}</span> - {group.length} files</div>
 							<ul class="space-y-0.5 text-muted-foreground">
 								{#each group as path}
 									<li class="truncate">{path}</li>

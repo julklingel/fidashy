@@ -23,7 +23,14 @@ pub fn lazy_grouping_csv_many(
     }
 
     let grouped_paths: Vec<Vec<String>> = groups.into_values().collect();
-    Ok(grouped_paths)
+    let grouped_path_filtered: Vec<Vec<String>> = grouped_paths
+        .into_iter()
+        .filter(|group| group.len()>1)
+        .collect();
+
+
+
+    Ok(grouped_path_filtered)
 }
 
 
