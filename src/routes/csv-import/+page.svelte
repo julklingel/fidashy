@@ -1,8 +1,9 @@
 <script lang="ts">
   import CsvFileGroupingResults from "$lib/components/CsvFileGroupingResults.svelte";
 import CsvFileSelectionAndGroupingCard from "$lib/components/CsvFileSelectionAndGrouping.svelte";
+  import type { GroupWithDuplicates } from "$lib/components/csv-types";
 
-  let groupedPaths = $state<string[][]>([]);
+  let groupedPaths = $state<GroupWithDuplicates[]>([]);
   const groupedPathsCount = $derived(groupedPaths.length);
 
 

@@ -3,6 +3,12 @@ export type SelectedCsvFile = {
   name: string;
 };
 
+export type GroupWithDuplicates = {
+  paths: string[];
+  duplicate_count: number;
+  total_entries: number;
+};
+
 export type GroupingResult = {
   processed_files: number;
   group_count: number;

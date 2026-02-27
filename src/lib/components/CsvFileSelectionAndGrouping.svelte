@@ -7,16 +7,14 @@
 	import { Button } from "$lib/components/ui/button/index.js";
 	import { toast } from "$lib/components/ui/sonner/sonner.js";
 
-
-	import CsvFileGroupingResults from './CsvFileGroupingResults.svelte';
 	import CsvInfoHover from "$lib/components/CsvInfoHover.svelte";
-	import type { SelectedCsvFile } from "$lib/components/csv-types";
+	import type { GroupWithDuplicates, SelectedCsvFile } from "$lib/components/csv-types";
 
 	type Props = {
-		groupedPaths?: string[][];
+		groupedPaths?: GroupWithDuplicates[];
 	};
 
-	let { groupedPaths = $bindable<string[][]>([]) }: Props = $props();
+	let { groupedPaths = $bindable<GroupWithDuplicates[]>([]) }: Props = $props();
 	
 
 
@@ -67,9 +65,8 @@
 		isProcessing = true;
 		try {
 			const paths = selectedFiles.map((file) => file.path);
-			const response = await invoke<string[][]>("lazy_grouping_csv_many", { paths });
+			const response = await invoke<GroupWithDuplicates[]>("lazy_grouping_csv_many", { paths });
 			groupedPaths = response;
-            console.log(response)
 			toast.success(`Processed ${paths.length} file(s) into ${response.length} group(s).`);
 		} catch (error) {
 			groupedPaths = [];

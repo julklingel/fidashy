@@ -28,3 +28,10 @@ pub struct ProcessCsvResult {
     pub files: Vec<CsvFileHeaders>,
     pub matching_header_groups: Vec<MatchingHeaderGroup>,
 }
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct GroupWithDuplicates {
+    pub paths: Vec<String>,
+    pub duplicate_count: usize,
+    pub total_entries: usize,
+}

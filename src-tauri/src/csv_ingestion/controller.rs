@@ -1,4 +1,4 @@
-use super::services;
+use super::{models, services};
 
 // #[tauri::command]
 // pub async fn group_csv_files(
@@ -13,7 +13,7 @@ use super::services;
 #[tauri::command]
 pub async fn lazy_grouping_csv_many(
 	paths: Vec<String>,
-	) -> Result<Vec<Vec<String>>, String>  {
+	) -> Result<Vec<models::GroupWithDuplicates>, String>  {
 	tauri::async_runtime::spawn_blocking(move || {
 		services::grouping::lazy_grouping_csv_many(paths)
 	})
