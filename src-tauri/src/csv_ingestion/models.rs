@@ -28,25 +28,3 @@ pub struct ProcessCsvResult {
     pub files: Vec<CsvFileHeaders>,
     pub matching_header_groups: Vec<MatchingHeaderGroup>,
 }
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct MergeCsvGroupResult {
-    pub input_rows: usize,
-    pub merged_rows: usize,
-    pub duplicate_rows_removed: usize,
-    pub merged_columns: usize,
-    pub merged_headers: Vec<String>,
-    pub matching_table_name: Option<String>,
-    pub duplicate_rows_with_db: usize,
-    pub requires_user_choice: bool,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct CsvIngestionWriteResult {
-    pub table_name: String,
-    pub input_rows: usize,
-    pub rows_inserted: usize,
-    pub rows_skipped_duplicates: usize,
-    pub created_new_table: bool,
-}
-
