@@ -34,3 +34,23 @@ pub async fn deduplicate_cached_group(
 		})?
 		.map_err(|e| format!("Deduplication failed for group '{}': {e}", group_id_for_error))
 }
+
+#[tauri::command]
+pub async fn skip_merge_cached_group(
+	group_id: String,
+	cache: tauri::State<'_, models::MergeCache>,
+) -> Result<models::SkipMergeGroupResult, String> {
+	let cache = cache.inner().clone();
+	let group_id_for_error = group_id.clone();
+	tauri::async_runtime::spawn_blocking(move || {
+		services::merge_groups::skip_merge_cached_group(&group_id, &cache)
+	})
+		.await
+		.map_err(|e| {
+			format!(
+				"Failed to execute skip-merge task for group '{}': {e}",
+				group_id_for_error
+			)
+		})?
+		.map_err(|e| format!("Skip-merge failed for group '{}': {e}", group_id_for_error))
+}

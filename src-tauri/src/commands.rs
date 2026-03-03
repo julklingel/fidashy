@@ -15,6 +15,7 @@ macro_rules! get_commands {
             // CSV Ingestion
             $crate::csv_ingestion::controller::lazy_grouping_csv_many,
             $crate::csv_ingestion::controller::deduplicate_cached_group,
+            $crate::csv_ingestion::controller::skip_merge_cached_group,
        
         ]
     };

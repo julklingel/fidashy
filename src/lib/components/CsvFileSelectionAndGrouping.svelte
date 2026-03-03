@@ -12,9 +12,13 @@
 
 	type Props = {
 		groupedPaths?: GroupWithDuplicates[];
+		soloPaths?: string[];
 	};
 
-	let { groupedPaths = $bindable<GroupWithDuplicates[]>([]) }: Props = $props();
+	let {
+		groupedPaths = $bindable<GroupWithDuplicates[]>([]),
+		soloPaths = $bindable<string[]>([]),
+	}: Props = $props();
 	
 	let selectedFiles = $state<SelectedCsvFile[]>([]);
 	let isProcessing = $state(false);
@@ -49,11 +53,13 @@
 
 		selectedFiles = Array.from(byPath.values());
 		groupedPaths = [];
+		soloPaths = [];
 	}
 
 	function deleteFile(path: string) {
 		selectedFiles = selectedFiles.filter((file) => file.path !== path);
 		groupedPaths = [];
+		soloPaths = [];
 	}
 
 	async function processFiles() {
@@ -64,9 +70,14 @@
 			const paths = selectedFiles.map((file) => file.path);
 			const response = await invoke<GroupWithDuplicates[]>("lazy_grouping_csv_many", { paths });
 			groupedPaths = response;
+
+			const groupedSet = new Set(response.flatMap((group) => group.paths));
+			soloPaths = paths.filter((path) => !groupedSet.has(path));
+
 			toast.success(`Processed ${paths.length} file(s) into ${response.length} group(s).`);
 		} catch (error) {
 			groupedPaths = [];
+			soloPaths = [];
 			const message = error instanceof Error ? error.message : String(error);
 			toast.error(`CSV processing failed: ${message}`);
 		} finally {

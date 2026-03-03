@@ -22,6 +22,14 @@ pub struct DeduplicateGroupResult {
     pub message: String,
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct SkipMergeGroupResult {
+    pub group_id: String,
+    pub source_file_count: usize,
+    pub standalone_paths: Vec<String>,
+    pub message: String,
+}
+
 #[derive(Debug, Clone)]
 pub struct CachedDataFrame {
     pub paths: Vec<String>,
@@ -50,5 +58,14 @@ impl MergeCache {
             .map_err(|e| format!("merge cache lock poisoned: {e}"))?;
 
         Ok(guard.get(group_id).cloned())
+    }
+
+    pub fn remove_group(&self, group_id: &str) -> Result<Option<CachedDataFrame>, String> {
+        let mut guard = self
+            .inner
+            .lock()
+            .map_err(|e| format!("merge cache lock poisoned: {e}"))?;
+
+        Ok(guard.remove(group_id))
     }
 }

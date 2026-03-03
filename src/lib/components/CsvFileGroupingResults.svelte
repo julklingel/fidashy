@@ -1,46 +1,98 @@
 <script lang="ts">
 	import { invoke } from "@tauri-apps/api/core";
 	import { Card } from "$lib/components/ui/card/index.js";
-	import type { DeduplicateGroupResult, GroupWithDuplicates } from "$lib/components/csv-types";
+	import type {
+		DeduplicateGroupResult,
+		GroupResolutionSummary,
+		GroupWithDuplicates,
+		StandaloneGroup,
+		SkipMergeGroupResult,
+	} from "$lib/components/csv-types";
 	import { toast } from "$lib/components/ui/sonner/sonner.js";
 	import Button from "./ui/button/button.svelte";
 
+	type GroupDecision = "merged" | "standalone";
+
 	type Props = {
 		groupedPaths: GroupWithDuplicates[];
-		onDeduplicateCompleted?: (result: DeduplicateGroupResult) => void;
+		onAllGroupsResolved?: (summary: GroupResolutionSummary) => void;
 	};
 
-	let { groupedPaths, onDeduplicateCompleted }: Props = $props();
+	let { groupedPaths, onAllGroupsResolved }: Props = $props();
 	const groupedPathsCount = $derived(groupedPaths.length);
-	let isMerging = $state(false);
-	let deduplicatedGroupIds = $state<Set<string>>(new Set());
+	let activeGroupId = $state<string | null>(null);
+	let decisionsByGroupId = $state<Record<string, GroupDecision>>({});
+	let standalonePathsByGroupId = $state<Record<string, string[]>>({});
 
 	$effect(() => {
 		groupedPaths;
-		deduplicatedGroupIds = new Set();
+		decisionsByGroupId = {};
+		standalonePathsByGroupId = {};
 	});
 
+	function isGroupResolved(groupId: string) {
+		return decisionsByGroupId[groupId] !== undefined;
+	}
+
+	function maybeCompleteFlow() {
+		if (Object.keys(decisionsByGroupId).length !== groupedPathsCount) return;
+
+		const mergedGroupIds = Object.entries(decisionsByGroupId)
+			.filter(([, decision]) => decision === "merged")
+			.map(([groupId]) => groupId);
+
+		const skippedGroupIds = Object.entries(decisionsByGroupId)
+			.filter(([, decision]) => decision === "standalone")
+			.map(([groupId]) => groupId);
+
+		const standaloneGroups: StandaloneGroup[] = skippedGroupIds.map((groupId) => ({
+			group_id: groupId,
+			paths: standalonePathsByGroupId[groupId] ?? [],
+		}));
+
+		onAllGroupsResolved?.({
+			mergedGroupIds,
+			standaloneGroups,
+		});
+	}
+
 	async function mergeGroup(groupId: string) {
-		if (isMerging || deduplicatedGroupIds.has(groupId)) return;
-		isMerging = true;
+		if (activeGroupId || isGroupResolved(groupId)) return;
+		activeGroupId = groupId;
 		try {
 			const result = await invoke<DeduplicateGroupResult>("deduplicate_cached_group", { groupId });
-			const nextDeduplicated = new Set(deduplicatedGroupIds);
-			nextDeduplicated.add(groupId);
-			deduplicatedGroupIds = nextDeduplicated;
-			const completedCount = nextDeduplicated.size;
+			decisionsByGroupId = { ...decisionsByGroupId, [groupId]: "merged" };
+			const completedCount = Object.keys(decisionsByGroupId).length;
 			toast.success(
 				`${result.message} (${result.rows_before} → ${result.rows_after} rows across ${result.source_file_count} files). ${completedCount}/${groupedPathsCount} groups completed.`
 			);
-
-			if (completedCount === groupedPathsCount) {
-				onDeduplicateCompleted?.(result);
-			}
+			maybeCompleteFlow();
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);
 			toast.error(`Deduplication failed for group '${groupId}': ${message}`);
 		} finally {
-			isMerging = false;
+			activeGroupId = null;
+		}
+	}
+
+	async function keepGroupStandalone(groupId: string) {
+		if (activeGroupId || isGroupResolved(groupId)) return;
+		activeGroupId = groupId;
+		try {
+			const result = await invoke<SkipMergeGroupResult>("skip_merge_cached_group", { groupId });
+			decisionsByGroupId = { ...decisionsByGroupId, [groupId]: "standalone" };
+			standalonePathsByGroupId = {
+				...standalonePathsByGroupId,
+				[groupId]: result.standalone_paths,
+			};
+			const completedCount = Object.keys(decisionsByGroupId).length;
+			toast.success(`${result.message}. ${completedCount}/${groupedPathsCount} groups completed.`);
+			maybeCompleteFlow();
+		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error);
+			toast.error(`Failed to keep group '${groupId}' standalone: ${message}`);
+		} finally {
+			activeGroupId = null;
 		}
 	}
 
@@ -63,19 +115,37 @@
 								- {group.paths.length} files - {group.duplicate_count}
 								duplicates / {group.total_entries} total entries
 							</div>
-							<Button
-								size="sm"
-								onclick={() => mergeGroup(group.group_id)}
-								disabled={isMerging || deduplicatedGroupIds.has(group.group_id)}
-							>
-								{#if deduplicatedGroupIds.has(group.group_id)}
-									Done
-								{:else if isMerging}
-									Deduplicating...
+							<div class="flex items-center gap-2">
+								{#if decisionsByGroupId[group.group_id] === "merged"}
+									<span class="text-xs font-medium text-muted-foreground">Merged</span>
+								{:else if decisionsByGroupId[group.group_id] === "standalone"}
+									<span class="text-xs font-medium text-muted-foreground">Kept standalone</span>
 								{:else}
-									Remove duplicates
+									<Button
+										size="sm"
+										onclick={() => mergeGroup(group.group_id)}
+										disabled={activeGroupId !== null}
+									>
+										{#if activeGroupId === group.group_id}
+											Processing...
+										{:else}
+											Merge
+										{/if}
+									</Button>
+									<Button
+										size="sm"
+										variant="outline"
+										onclick={() => keepGroupStandalone(group.group_id)}
+										disabled={activeGroupId !== null}
+									>
+										{#if activeGroupId === group.group_id}
+											Processing...
+										{:else}
+											Keep standalone
+										{/if}
+									</Button>
 								{/if}
-							</Button>
+							</div>
 						</div>
 						<ul class="space-y-0.5 text-muted-foreground">
 							{#each group.paths as path}

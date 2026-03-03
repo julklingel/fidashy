@@ -34,3 +34,20 @@ export type DeduplicateGroupResult = {
   message: string;
 };
 
+export type SkipMergeGroupResult = {
+  group_id: string;
+  source_file_count: number;
+  standalone_paths: string[];
+  message: string;
+};
+
+export type StandaloneGroup = {
+  group_id: string;
+  paths: string[];
+};
+
+export type GroupResolutionSummary = {
+  mergedGroupIds: string[];
+  standaloneGroups: StandaloneGroup[];
+};
+

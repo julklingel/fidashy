@@ -1,5 +1,10 @@
 use polars::prelude::{IntoLazy, UniqueKeepStrategy};
-use crate::csv_ingestion::models::{CachedDataFrame, DeduplicateGroupResult, MergeCache};
+use crate::csv_ingestion::models::{
+    CachedDataFrame,
+    DeduplicateGroupResult,
+    MergeCache,
+    SkipMergeGroupResult,
+};
 
 pub fn deduplicate_cached_group(
     group_id: &str,
@@ -49,6 +54,26 @@ pub fn deduplicate_cached_group(
         duplicates_removed,
         message: format!(
             "Removed {duplicates_removed} duplicate rows from group '{group_id}'"
+        ),
+    })
+}
+
+pub fn skip_merge_cached_group(
+    group_id: &str,
+    cache: &MergeCache,
+) -> Result<SkipMergeGroupResult, String> {
+    let removed_group = cache
+        .remove_group(group_id)?
+        .ok_or_else(|| format!("No cached group found for id: {group_id}"))?;
+
+    let source_file_count = removed_group.paths.len();
+
+    Ok(SkipMergeGroupResult {
+        group_id: group_id.to_string(),
+        source_file_count,
+        standalone_paths: removed_group.paths.clone(),
+        message: format!(
+            "Group '{group_id}' will stay as {source_file_count} standalone table(s)"
         ),
     })
 }
