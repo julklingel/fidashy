@@ -1,4 +1,4 @@
-use crate::csv_ingestion::models::{CachedGroup, GroupWithDuplicates, MergeCache};
+use crate::csv_ingestion::models::{CachedDataFrame, GroupWithDuplicates, MergeCache};
 use polars::prelude::*;
 use std::collections::HashMap;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -61,18 +61,19 @@ pub fn lazy_grouping_csv_many(
                 });
             }
 
-            let merged_df = concat(lfs, UnionArgs::default())?.collect()?;
-            let dup_mask = merged_df.is_duplicated()?;
+            let data_frame = concat(lfs, UnionArgs::default())?.collect()?;
+            let dup_mask = data_frame.is_duplicated()?;
             let duplicate_count = dup_mask.sum().unwrap_or(0) as usize;
-            let total_entries = merged_df.height();
+            let total_entries = data_frame.height();
             let group_id = format!("{workflow_id}-{group_idx}");
 
             cache
                 .insert(
                     group_id.clone(),
-                    CachedGroup {
-                        merged_df,
+                    CachedDataFrame {
                         paths: group_paths.clone(),
+                        data_frame,
+               
                     },
                 )
                 .map_err(|message| PolarsError::ComputeError(message.into()))?;

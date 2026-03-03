@@ -12,35 +12,43 @@ pub struct GroupWithDuplicates {
     pub total_entries: usize,
 }
 
-#[derive(Debug)]
-pub struct CachedGroup {
-    pub merged_df: DataFrame,
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct DeduplicateGroupResult {
+    pub group_id: String,
+    pub source_file_count: usize,
+    pub rows_before: usize,
+    pub rows_after: usize,
+    pub duplicates_removed: usize,
+    pub message: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct CachedDataFrame {
     pub paths: Vec<String>,
+    pub data_frame: DataFrame,
 }
 
 #[derive(Clone, Default)]
 pub struct MergeCache {
-    inner: Arc<Mutex<HashMap<String, CachedGroup>>>,
+    inner: Arc<Mutex<HashMap<String, CachedDataFrame>>>,
 }
 
 impl MergeCache {
-    pub fn insert(&self, group_id: String, cached_group: CachedGroup) -> Result<(), String> {
+    pub fn insert(&self, group_id: String, cached_data_frame: CachedDataFrame) -> Result<(), String> {
         let mut guard = self
             .inner
             .lock()
             .map_err(|e| format!("merge cache lock poisoned: {e}"))?;
-        guard.insert(group_id, cached_group);
+        guard.insert(group_id, cached_data_frame);
         Ok(())
     }
 
-    pub fn get_group(&self, group_id: &str) -> Result<Option<CachedGroup>, String> {
+    pub fn get_group(&self, group_id: &str) -> Result<Option<CachedDataFrame>, String> {
         let guard = self
             .inner
             .lock()
             .map_err(|e| format!("merge cache lock poisoned: {e}"))?;
-        Ok(guard.get(group_id).map(|cached| CachedGroup {
-            merged_df: cached.merged_df.clone(),
-            paths: cached.paths.clone(),
-        }))
+
+        Ok(guard.get(group_id).cloned())
     }
 }

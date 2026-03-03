@@ -16,12 +16,21 @@ pub async fn lazy_grouping_csv_many(
 }
 
 #[tauri::command]
-pub async fn merge_csv(
+pub async fn deduplicate_cached_group(
 	group_id: String,
 	cache: tauri::State<'_, models::MergeCache>,
-) -> Result<String, String> {
+) -> Result<models::DeduplicateGroupResult, String> {
 	let cache = cache.inner().clone();
-	tauri::async_runtime::spawn_blocking(move || services::merge_groups::merge_csv(&group_id, &cache))
+	let group_id_for_error = group_id.clone();
+	tauri::async_runtime::spawn_blocking(move || {
+		services::merge_groups::deduplicate_cached_group(&group_id, &cache)
+	})
 		.await
-		.map_err(|e| format!("Failed to execute merge task: {e}"))?
+		.map_err(|e| {
+			format!(
+				"Failed to execute deduplication task for group '{}': {e}",
+				group_id_for_error
+			)
+		})?
+		.map_err(|e| format!("Deduplication failed for group '{}': {e}", group_id_for_error))
 }

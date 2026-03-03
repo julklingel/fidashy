@@ -1,31 +1,44 @@
 <script lang="ts">
 	import { invoke } from "@tauri-apps/api/core";
 	import { Card } from "$lib/components/ui/card/index.js";
-	import type { GroupWithDuplicates } from "$lib/components/csv-types";
+	import type { DeduplicateGroupResult, GroupWithDuplicates } from "$lib/components/csv-types";
 	import { toast } from "$lib/components/ui/sonner/sonner.js";
 	import Button from "./ui/button/button.svelte";
 
 	type Props = {
 		groupedPaths: GroupWithDuplicates[];
+		onDeduplicateCompleted?: (result: DeduplicateGroupResult) => void;
 	};
 
-	let { groupedPaths }: Props = $props();
+	let { groupedPaths, onDeduplicateCompleted }: Props = $props();
 	const groupedPathsCount = $derived(groupedPaths.length);
 	let isMerging = $state(false);
+	let deduplicatedGroupIds = $state<Set<string>>(new Set());
+
+	$effect(() => {
+		groupedPaths;
+		deduplicatedGroupIds = new Set();
+	});
 
 	async function mergeGroup(groupId: string) {
-		if (isMerging) return;
+		if (isMerging || deduplicatedGroupIds.has(groupId)) return;
 		isMerging = true;
 		try {
-			const result = await invoke<string>("merge_csv", { groupId });
-			if (result === "ok") {
-				toast.success("Merge completed.");
-				return;
+			const result = await invoke<DeduplicateGroupResult>("deduplicate_cached_group", { groupId });
+			const nextDeduplicated = new Set(deduplicatedGroupIds);
+			nextDeduplicated.add(groupId);
+			deduplicatedGroupIds = nextDeduplicated;
+			const completedCount = nextDeduplicated.size;
+			toast.success(
+				`${result.message} (${result.rows_before} → ${result.rows_after} rows across ${result.source_file_count} files). ${completedCount}/${groupedPathsCount} groups completed.`
+			);
+
+			if (completedCount === groupedPathsCount) {
+				onDeduplicateCompleted?.(result);
 			}
-			toast.success(`Merge finished: ${result}`);
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);
-			toast.error(`Merge failed: ${message}`);
+			toast.error(`Deduplication failed for group '${groupId}': ${message}`);
 		} finally {
 			isMerging = false;
 		}
@@ -50,8 +63,18 @@
 								- {group.paths.length} files - {group.duplicate_count}
 								duplicates / {group.total_entries} total entries
 							</div>
-							<Button size="sm" onclick={() => mergeGroup(group.group_id)} disabled={isMerging}>
-								{isMerging ? "Merging..." : "Merge"}
+							<Button
+								size="sm"
+								onclick={() => mergeGroup(group.group_id)}
+								disabled={isMerging || deduplicatedGroupIds.has(group.group_id)}
+							>
+								{#if deduplicatedGroupIds.has(group.group_id)}
+									Done
+								{:else if isMerging}
+									Deduplicating...
+								{:else}
+									Remove duplicates
+								{/if}
 							</Button>
 						</div>
 						<ul class="space-y-0.5 text-muted-foreground">

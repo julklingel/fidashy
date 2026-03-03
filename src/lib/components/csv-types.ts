@@ -25,3 +25,12 @@ export type Group = {
   duplicateRows: number;
 };
 
+export type DeduplicateGroupResult = {
+  group_id: string;
+  source_file_count: number;
+  rows_before: number;
+  rows_after: number;
+  duplicates_removed: number;
+  message: string;
+};
+

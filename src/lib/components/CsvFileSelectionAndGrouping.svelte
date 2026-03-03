@@ -16,11 +16,8 @@
 
 	let { groupedPaths = $bindable<GroupWithDuplicates[]>([]) }: Props = $props();
 	
-
-
 	let selectedFiles = $state<SelectedCsvFile[]>([]);
 	let isProcessing = $state(false);
-
 	
 	const selectedFilesLabel = $derived(
 		selectedFiles.length === 0 ? "No files selected" : `${selectedFiles.length} file(s) selected`
@@ -117,7 +114,7 @@
 									onclick={() => deleteFile(file.path)}
 									disabled={isProcessing}
 								>
-									<p class=" text-red-500">Delete</p>
+									<p class="text-red-500">Delete</p>
 								</Button>
 							</li>
 						{/each}
