@@ -1,5 +1,5 @@
 <script lang="ts">
-  import CsvGroupResolutionSummary from "$lib/components/CsvGroupResolutionSummary.svelte";
+  import CsvMergeGroupsWithDb from "$lib/components/CsvMergeGroupsWithDb.svelte";
   import CsvFileGroupingResults from "$lib/components/CsvFileGroupingResults.svelte";
   import CsvImportStepper from "$lib/components/CsvImportStepper.svelte";
   import CsvFileSelectionAndGroupingCard from "$lib/components/CsvFileSelectionAndGrouping.svelte";
@@ -62,11 +62,12 @@
 <section
   class="flex min-h-screen flex-col items-center justify-center bg-background px-4 py-8"
 >
+  <h1 class=" text-3xl font-semibold p-4">CSV - Database Import</h1>
   <div class="flex w-full max-w-2xl flex-col items-center gap-6">
     <CsvImportStepper {steps} {currentStep} />
 
     {#if displayedSummary}
-      <CsvGroupResolutionSummary summary={displayedSummary} {soloPaths} {noGroupsFound} />
+      <CsvMergeGroupsWithDb summary={displayedSummary} {soloPaths} {noGroupsFound} />
     {:else if groupedPathsCount == 0}
       <CsvFileSelectionAndGroupingCard bind:groupedPaths bind:soloPaths bind:noGroupsFound />
     {:else}

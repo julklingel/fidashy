@@ -1,6 +1,9 @@
 use super::{models, services};
 
 
+use crate::db::DuckDbState;
+use tauri::State;
+
 #[tauri::command]
 pub async fn lazy_grouping_csv_many(
 	paths: Vec<String>,
@@ -59,25 +62,83 @@ pub async fn skip_merge_cached_group(
 
 
 #[tauri::command]
+pub async fn create_new_table_from_source(
+	source_kind: String,
+	source_name: String,
+	source_paths: Vec<String>,
+	preferred_table: String,
+	cache: tauri::State<'_, models::MergeCache>,
+	db_state: State<'_, DuckDbState>,
+) -> Result<models::DbImportActionResult, String> {
+	let cache = cache.inner().clone();
+	let db_state = db_state.inner().clone();
+
+	tauri::async_runtime::spawn_blocking(move || {
+		let source_kind = services::db_ingestion::ImportSourceKind::try_from(source_kind.as_str())?;
+		services::db_ingestion::create_new_table_from_source(
+			source_kind,
+			source_name,
+			source_paths,
+			preferred_table,
+			&cache,
+			&db_state,
+		)
+	})
+	.await
+	.map_err(|e| format!("Failed to execute create-table task: {e}"))?
+}
+
+#[tauri::command]
+pub async fn merge_source_into_table(
+	source_kind: String,
+	source_name: String,
+	source_paths: Vec<String>,
+	target_table: String,
+	cache: tauri::State<'_, models::MergeCache>,
+	db_state: State<'_, DuckDbState>,
+) -> Result<models::DbImportActionResult, String> {
+	let cache = cache.inner().clone();
+	let db_state = db_state.inner().clone();
+
+	tauri::async_runtime::spawn_blocking(move || {
+		let source_kind = services::db_ingestion::ImportSourceKind::try_from(source_kind.as_str())?;
+		services::db_ingestion::merge_source_into_table(
+			source_kind,
+			source_name,
+			source_paths,
+			target_table,
+			&cache,
+			&db_state,
+		)
+	})
+	.await
+	.map_err(|e| format!("Failed to execute merge task: {e}"))?
+}
+
+#[tauri::command]
 pub async fn find_groups_between_db_and_files(
     paths: Vec<String>,
+    cache_ids: Vec<String>,
     cache: tauri::State<'_, models::MergeCache>,
-) -> std::result::Result<(), String> {
+    db_state: State<'_, DuckDbState>,
+) -> Result<(), String> {
+	println!("bam bam {:?}", paths);
+	println!("bam bam {:?}", cache_ids);
+
     let cache = cache.inner().clone();
+    let db_state = db_state.inner().clone();
 
-    tauri::async_runtime::spawn_blocking(move || -> std::result::Result<(), String> {
-        println!("Starting DB/file grouping. paths={:?}", paths);
-
-        // actually CALL the function
-        services::db_ingestion::find_groups_between_db_and_files(paths, &cache)?;
-
-        println!("DB/file grouping finished");
-        Ok(())
+    tauri::async_runtime::spawn_blocking(move || -> Result<(), String> {
+        services::db_ingestion::find_groups_between_db_and_files(
+            paths,
+            cache_ids,
+            &cache,
+            &db_state,
+        )
     })
     .await
-    .map_err(|e| format!("Failed to execute CSV processing task: {e}"))??;
+    .map_err(|e| format!("Failed to execute DB/file grouping task: {e}"))??;
 
     Ok(())
 }
 
-// ...existing code...

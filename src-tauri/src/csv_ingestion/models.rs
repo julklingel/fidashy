@@ -30,6 +30,25 @@ pub struct SkipMergeGroupResult {
     pub message: String,
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct DbSchemaCheckResult {
+    pub target_table: String,
+    pub table_exists: bool,
+    pub schema_matches: bool,
+    pub source_columns: Vec<String>,
+    pub existing_columns: Vec<String>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct DbImportActionResult {
+    pub target_table: String,
+    pub rows_written: usize,
+    pub source_label: String,
+    pub message: String,
+}
+
 #[derive(Debug, Clone)]
 pub struct CachedDataFrame {
     pub paths: Vec<String>,
