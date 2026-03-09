@@ -36,7 +36,7 @@ pub struct CachedDataFrame {
     pub data_frame: DataFrame,
 }
 
-#[derive(Clone, Default)]
+#[derive(Debug, Clone, Default)]
 pub struct MergeCache {
     inner: Arc<Mutex<HashMap<String, CachedDataFrame>>>,
 }
