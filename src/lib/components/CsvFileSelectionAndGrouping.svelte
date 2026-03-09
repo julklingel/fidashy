@@ -36,7 +36,7 @@
 	async function chooseCsvFiles() {
 		const response = await open({
 			multiple: true,
-			filters: [{ name: "CSV", extensions: ["csv"] }],
+			filters: [{ name: "CSV", extensions: ["csv", "CSV"] }],
 		});
 
 		if (!response) return;

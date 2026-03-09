@@ -102,7 +102,7 @@
 <Card>
 	{#if groupedPathsCount > 0}
 		<div class="space-y-2 rounded-md border p-3">
-			<h2 class="class=text-xl font-semibold tracking-tight">
+			<h2 class="text-xl font-semibold tracking-tight">
 				Grouping results ({groupedPathsCount} groups)
 			</h2>
 
