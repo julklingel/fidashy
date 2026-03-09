@@ -80,9 +80,7 @@ let creatingByPath = $state<Record<string, boolean>>({});
   }
 </script>
 
-<Card
-  className="w-full max-w-2xl rounded-lg border bg-card p-6 text-card-foreground shadow-sm"
->
+
   <FileProcessingResults
     {mergedGroupIds}
     {standaloneGroups}
@@ -90,6 +88,13 @@ let creatingByPath = $state<Record<string, boolean>>({});
     {allFilePaths}
     {noGroupsFound}
   />
+  
+
+<Card
+  className="w-full max-w-2xl rounded-lg border bg-card p-6 text-card-foreground shadow-sm"
+>
+<h2 class="text-xl pb-4 font-semibold tracking-tight">Resolve tables against the database</h2>
+
 
 <ul class="space-y-3">
   {#each allFilePaths as path}

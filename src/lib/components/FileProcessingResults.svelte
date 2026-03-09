@@ -14,9 +14,13 @@
 </script>
 
 
+<Card
+  className="w-full max-w-2xl rounded-lg border bg-card p-6 text-card-foreground shadow-sm">
+
+
   <div class="space-y-4">
     <div class="space-y-1">
-      <h2 class="text-xl font-semibold tracking-tight">Resolve tables against the database</h2>
+      <h2 class="text-xl font-semibold tracking-tight">Review file grouping</h2>
       <p class="text-sm text-muted-foreground">
         {#if noGroupsFound}
           No matching CSV groups were found, so only files that passed through without grouping will continue.
@@ -32,9 +36,7 @@
         {passthroughPaths.length}
       </p>
       <p>Total files continuing from grouping: {allFilePaths.length}</p>
-    </div>
-
-    <Accordion type="single">
+          <Accordion type="single">
       <AccordionItem value="group-resolution-summary">
         <AccordionTrigger>Group resolving summary</AccordionTrigger>
         <AccordionContent>
@@ -88,6 +90,9 @@
         </AccordionContent>
       </AccordionItem>
     </Accordion>
+    </div>
+
+
   </div>
 
-
+</Card>
