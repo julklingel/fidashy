@@ -49,6 +49,35 @@ try {
       isProcessing = false;
     }
   }
+
+
+
+
+
+let tableNames = $state<Record<string, string>>({});
+let creatingByPath = $state<Record<string, boolean>>({});
+
+  async function createTableFromPath(path: string) {
+    const preferredTableName = (tableNames[path] ?? "").trim();
+
+    if (!preferredTableName) {
+      toast.error("Please enter a table name.");
+      return;
+    }
+
+    creatingByPath[path] = true;
+    try {
+      await invoke("create_new_table_from_source", {
+        sourcePath: path,
+        preferredTableName,
+      });
+      toast.success(`Table '${preferredTableName}' created.`);
+    } catch (error) {
+      toast.error(`Create table failed: ${error}`);
+    } finally {
+      creatingByPath[path] = false;
+    }
+  }
 </script>
 
 <Card
@@ -62,13 +91,29 @@ try {
     {noGroupsFound}
   />
 
-  <ul>
-    {#each allFilePaths as path}
-      <li>
-        {path}
-      </li>
-    {/each}
-  </ul>
+<ul class="space-y-3">
+  {#each allFilePaths as path}
+    <li class="rounded border p-3">
+      <div class="mb-2 text-sm">{path}</div>
+
+      <div class="flex items-center gap-2">
+        <input
+          class="h-9 w-full rounded border px-2 text-sm"
+          placeholder="Enter table name"
+          bind:value={tableNames[path]}
+        />
+
+        <Button
+          class="shrink-0"
+          onclick={() => createTableFromPath(path)}
+          disabled={creatingByPath[path]}
+        >
+          {creatingByPath[path] ? "Creating..." : "Create table"}
+        </Button>
+      </div>
+    </li>
+  {/each}
+</ul>
 
       <Button class="w-full" onclick={() => findGroupsWithDb(allFilePaths, mergedGroupIds)} disabled={ isProcessing}>
       {isProcessing ? "Processing..." : "Process"}

@@ -1,62 +1,53 @@
-use crate::csv_ingestion::models::{DbImportActionResult, MergeCache};
+use crate::csv_ingestion::models::{MergeCache};
 use crate::db::DuckDbState;
 use std::collections::HashMap;
 use std::path::Path;
 
-#[derive(Clone, Copy)]
-pub enum ImportSourceKind {
-    Group,
-    File,
-}
-
-impl TryFrom<&str> for ImportSourceKind {
-    type Error = String;
-
-    fn try_from(value: &str) -> Result<Self, Self::Error> {
-        match value {
-            "group" => Ok(Self::Group),
-            "file" => Ok(Self::File),
-            other => Err(format!("Unsupported import source kind: {other}")),
-        }
-    }
-}
 
 
 pub fn create_new_table_from_source(
-    _source_kind: ImportSourceKind,
-    source_name: String,
-    _source_paths: Vec<String>,
-    preferred_table: String,
-    _cache: &MergeCache,
-    _db_state: &DuckDbState,
-) -> Result<DbImportActionResult, String> {
-    Ok(DbImportActionResult {
-        target_table: preferred_table.clone(),
-        rows_written: 0,
-        source_label: source_name.clone(),
-        message: format!(
-            "Dummy create_new_table_from_source for '{source_name}' -> '{preferred_table}'"
-        ),
-    })
+    source_path: String,
+    preferred_table_name: String,
+    db_state: &DuckDbState,
+) -> Result<(), String> {
+    println!("Creating table '{}' from source: {}", preferred_table_name, source_path);
+
+    db_state.with_db(|conn| {
+        // We wrap the table name in double quotes to handle names with spaces or reserved keywords
+        // We wrap the source path in single quotes for DuckDB's string literal requirement
+        let sql = format!(
+            "CREATE TABLE \"{}\" AS SELECT * FROM read_csv_auto('{}')",
+            preferred_table_name, 
+            source_path
+        );
+
+        conn.execute(&sql, [])
+            .map_err(|e| format!("DuckDB Error: {}", e))?;
+
+        Ok(())
+    })?;
+
+    println!("Successfully created table '{}'", preferred_table_name);
+    Ok(())
 }
 
-pub fn merge_source_into_table(
-    _source_kind: ImportSourceKind,
-    source_name: String,
-    _source_paths: Vec<String>,
-    target_table: String,
-    _cache: &MergeCache,
-    _db_state: &DuckDbState,
-) -> Result<DbImportActionResult, String> {
-    Ok(DbImportActionResult {
-        target_table: target_table.clone(),
-        rows_written: 0,
-        source_label: source_name.clone(),
-        message: format!(
-            "Dummy merge_source_into_table for '{source_name}' -> '{target_table}'"
-        ),
-    })
-}
+// pub fn merge_source_into_table(
+//     _source_kind: ImportSourceKind,
+//     source_name: String,
+//     _source_paths: Vec<String>,
+//     target_table: String,
+//     _cache: &MergeCache,
+//     _db_state: &DuckDbState,
+// ) -> Result<DbImportActionResult, String> {
+//     Ok(DbImportActionResult {
+//         target_table: target_table.clone(),
+//         rows_written: 0,
+//         source_label: source_name.clone(),
+//         message: format!(
+//             "Dummy merge_source_into_table for '{source_name}' -> '{target_table}'"
+//         ),
+//     })
+// }
 
 pub fn find_groups_between_db_and_files(
     paths: Vec<String>,

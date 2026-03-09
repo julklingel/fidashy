@@ -18,7 +18,6 @@ macro_rules! get_commands {
             $crate::csv_ingestion::controller::skip_merge_cached_group,
         
             $crate::csv_ingestion::controller::create_new_table_from_source,
-            $crate::csv_ingestion::controller::merge_source_into_table,
             $crate::csv_ingestion::controller::find_groups_between_db_and_files,
 
        
