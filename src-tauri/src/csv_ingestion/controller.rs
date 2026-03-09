@@ -54,3 +54,30 @@ pub async fn skip_merge_cached_group(
 		})?
 		.map_err(|e| format!("Skip-merge failed for group '{}': {e}", group_id_for_error))
 }
+
+
+
+
+#[tauri::command]
+pub async fn find_groups_between_db_and_files(
+    paths: Vec<String>,
+    cache: tauri::State<'_, models::MergeCache>,
+) -> std::result::Result<(), String> {
+    let cache = cache.inner().clone();
+
+    tauri::async_runtime::spawn_blocking(move || -> std::result::Result<(), String> {
+        println!("Starting DB/file grouping. paths={:?}", paths);
+
+        // actually CALL the function
+        services::db_ingestion::find_groups_between_db_and_files(paths, &cache)?;
+
+        println!("DB/file grouping finished");
+        Ok(())
+    })
+    .await
+    .map_err(|e| format!("Failed to execute CSV processing task: {e}"))??;
+
+    Ok(())
+}
+
+// ...existing code...

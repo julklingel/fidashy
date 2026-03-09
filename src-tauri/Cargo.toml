@@ -30,4 +30,5 @@ serde_json = "1"
 duckdb = { version = "1", features = ["bundled"], optional = true }
 polars = { version = "0.53.0", features = ["lazy", "csv", "fmt"] }
 rayon = "1.10"
+anyhow = "1.0.102"
 
