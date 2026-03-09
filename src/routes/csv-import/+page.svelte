@@ -10,8 +10,13 @@
 
   let groupedPaths = $state<GroupWithDuplicates[]>([]);
   let soloPaths = $state<string[]>([]);
+  let noGroupsFound = $state(false);
   const groupedPathsCount = $derived(groupedPaths.length);
   let resolutionSummary = $state<GroupResolutionSummary | null>(null);
+  const emptyResolutionSummary: GroupResolutionSummary = {
+    mergedGroupIds: [],
+    standaloneGroups: [],
+  };
 
   const steps = [
     {
@@ -31,8 +36,14 @@
     },
   ];
 
+  const displayedSummary = $derived.by(() => {
+    if (resolutionSummary) return resolutionSummary;
+    if (noGroupsFound) return emptyResolutionSummary;
+    return null;
+  });
+
   const currentStep = $derived.by(() => {
-    if (resolutionSummary) return 3;
+    if (displayedSummary) return 3;
     if (groupedPathsCount > 0) return 2;
     return 1;
   });
@@ -42,7 +53,7 @@
   }
 
   $effect(() => {
-    if (groupedPathsCount === 0) {
+    if (groupedPathsCount === 0 && !noGroupsFound) {
       resolutionSummary = null;
     }
   });
@@ -54,10 +65,10 @@
   <div class="flex w-full max-w-2xl flex-col items-center gap-6">
     <CsvImportStepper {steps} {currentStep} />
 
-    {#if resolutionSummary}
-      <CsvGroupResolutionSummary summary={resolutionSummary} {soloPaths} />
-    {:else if groupedPathsCount < 1}
-      <CsvFileSelectionAndGroupingCard bind:groupedPaths bind:soloPaths />
+    {#if displayedSummary}
+      <CsvGroupResolutionSummary summary={displayedSummary} {soloPaths} {noGroupsFound} />
+    {:else if groupedPathsCount == 0}
+      <CsvFileSelectionAndGroupingCard bind:groupedPaths bind:soloPaths bind:noGroupsFound />
     {:else}
       <CsvFileGroupingResults {groupedPaths} {onAllGroupsResolved} />
     {/if}
