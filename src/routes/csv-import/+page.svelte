@@ -14,6 +14,7 @@
   const groupedPathsCount = $derived(groupedPaths.length);
   let resolutionSummary = $state<GroupResolutionSummary | null>(null);
   const emptyResolutionSummary: GroupResolutionSummary = {
+    mergedGroups: [],
     mergedGroupIds: [],
     standaloneGroups: [],
   };
