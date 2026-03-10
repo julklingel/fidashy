@@ -5,6 +5,7 @@
 		DeduplicateGroupResult,
 		GroupResolutionSummary,
 		GroupWithDuplicates,
+		MergedGroup,
 		StandaloneGroup,
 		SkipMergeGroupResult,
 	} from "$lib/components/csv-types";
@@ -41,6 +42,14 @@
 			.filter(([, decision]) => decision === "merged")
 			.map(([groupId]) => groupId);
 
+		const mergedGroups: MergedGroup[] = mergedGroupIds.map((groupId) => {
+			const group = groupedPaths.find((entry) => entry.group_id === groupId);
+			return {
+				group_id: groupId,
+				paths: group?.paths ?? [],
+			};
+		});
+
 		const skippedGroupIds = Object.entries(decisionsByGroupId)
 			.filter(([, decision]) => decision === "standalone")
 			.map(([groupId]) => groupId);
@@ -51,6 +60,7 @@
 		}));
 
 		onAllGroupsResolved?.({
+			mergedGroups,
 			mergedGroupIds,
 			standaloneGroups,
 		});
