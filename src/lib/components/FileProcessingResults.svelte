@@ -1,5 +1,4 @@
 <script lang="ts">
-  import type { GroupResolutionSummary } from "$lib/components/csv-types";
   import {
     Accordion,
     AccordionContent,
@@ -8,7 +7,7 @@
   } from "$lib/components/ui/accordion/index.js";
   import { Card } from "$lib/components/ui/card/index.js";
 
-    let { mergedGroupIds, standaloneGroups, passthroughPaths, allFilePaths, noGroupsFound } = $props();
+    let { mergedGroups, mergedGroupIds, standaloneGroups, passthroughPaths, allFilePaths, noGroupsFound } = $props();
 
 
 </script>
@@ -43,12 +42,19 @@
           <div class="space-y-4 text-sm">
             <div>
               <h3 class="font-semibold">Merged groups</h3>
-              {#if mergedGroupIds.length === 0}
+              {#if mergedGroups.length === 0}
                 <p class="text-muted-foreground">No groups were merged.</p>
               {:else}
-                <ul class="list-disc space-y-1 pl-5 text-muted-foreground">
-                  {#each mergedGroupIds as groupId}
-                    <li>{groupId}</li>
+                <ul class="space-y-3 text-muted-foreground">
+                  {#each mergedGroups as group}
+                    <li>
+                      <p class="font-medium text-foreground">{group.group_id}</p>
+                      <ul class="list-disc space-y-1 pl-5">
+                        {#each group.paths as path}
+                          <li>{path}</li>
+                        {/each}
+                      </ul>
+                    </li>
                   {/each}
                 </ul>
               {/if}
