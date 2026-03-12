@@ -1,5 +1,6 @@
 <script lang="ts">
   import CsvMergeGroupsWithDb from "$lib/components/CsvMergeGroupsWithDb.svelte";
+  import { goto } from "$app/navigation";
   import CsvFileGroupingProposalCard from "$lib/components/CsvFileGroupingProposal.svelte";
   import CsvImportStepper from "$lib/components/CsvImportStepper.svelte";
   import CsvFileSelectionCard from "$lib/components/CsvFileSelection.svelte";
@@ -45,6 +46,10 @@
     resolutionSummary = summary;
   }
 
+  function onAllSourcesResolved() {
+    goto("/");
+  }
+
   $effect(() => {
     if (!hasGroupingWorkspace) {
       resolutionSummary = null;
@@ -60,7 +65,7 @@
     <CsvImportStepper {steps} {currentStep} />
 
     {#if displayedSummary}
-      <CsvMergeGroupsWithDb summary={displayedSummary} />
+      <CsvMergeGroupsWithDb summary={displayedSummary} onAllResolved={onAllSourcesResolved} />
     {:else if !hasGroupingWorkspace}
       <CsvFileSelectionCard bind:groupedPaths bind:soloPaths bind:noGroupsFound />
     {:else}

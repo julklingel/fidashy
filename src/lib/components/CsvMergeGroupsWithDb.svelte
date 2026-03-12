@@ -8,9 +8,10 @@
 
   type Props = {
     summary: GroupResolutionSummary;
+    onAllResolved?: () => void;
   };
 
-  let { summary }: Props = $props();
+  let { summary, onAllResolved }: Props = $props();
 
   const mergedGroups = $derived(summary.mergedGroups);
   const standalonePaths = $derived(
@@ -33,6 +34,9 @@
     })),
   ]);
 
+
+  
+
   let dbMatches = $state<DbMatchProposal[]>([]);
   let hasLoadedMatches = $state(false);
   let isFindingMatches = $state(false);
@@ -42,11 +46,22 @@
   let tableNames = $state<Record<string, string>>({});
   let creatingBySourceId = $state<Record<string, boolean>>({});
   let mergingBySourceId = $state<Record<string, boolean>>({});
+  let resolvedIds = $state<Set<string>>(new Set());
+  
 
-  const resolutionItems = $derived.by(() => {
+  const allItems = $derived.by(() => {
     const matchesById = new Map(dbMatches.map((item) => [item.source_id, item]));
     return baseItems.map((item) => matchesById.get(item.source_id) ?? item);
   });
+  const resolutionItems = $derived(allItems.filter((item) => !resolvedIds.has(item.source_id)));
+
+  function markResolved(sourceId: string) {
+    resolvedIds = new Set([...resolvedIds, sourceId]);
+    if (resolvedIds.size === allItems.length && allItems.length > 0) {
+      toast.success("All sources resolved! Redirecting…");
+      onAllResolved?.();
+    }
+  }
   const summarySignature = $derived(
     JSON.stringify({
       mergedGroups: summary.mergedGroups,
@@ -115,6 +130,7 @@
         preferredTableName,
       });
       toast.success(`Table '${preferredTableName}' created — removed ${result.duplicates_removed} duplicate(s).`);
+      markResolved(item.source_id);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       toast.error(`Create table failed: ${message}`);
@@ -142,6 +158,7 @@
       toast.success(
         `Merged '${sourceLabel(item)}' into '${targetTable}' — inserted ${result.rows_inserted} row(s), removed ${result.duplicates_removed} duplicate(s).`
       );
+      markResolved(item.source_id);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       toast.error(`Merge into table failed: ${message}`);
