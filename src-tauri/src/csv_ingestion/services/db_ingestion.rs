@@ -96,14 +96,10 @@ pub fn merge_source_into_table(
         format!("read_csv_auto([{}], union_by_name=true)", files)
     };
 
-    // Count raw (pre-DISTINCT) rows from source — used to compute total duplicates eliminated.
     let count_source_raw_sql = format!("SELECT COUNT(*) FROM {}", source_relation_sql);
-
-    // Count existing rows in the target before we insert anything.
     let count_before_sql = format!("SELECT COUNT(*) FROM {}", quoted_table);
 
-    // Insert only rows that are new: distinct source rows minus rows already in the target.
-    // EXCEPT removes cross-table duplicates; DISTINCT collapses intra-file duplicates first.
+
     let insert_sql = format!(
         "INSERT INTO {table} SELECT * FROM (SELECT DISTINCT * FROM {source} EXCEPT SELECT * FROM {table})",
         table = quoted_table,
@@ -136,7 +132,6 @@ pub fn merge_source_into_table(
             .map_err(|_| "Row count after merge was negative".to_string())?;
 
         let rows_inserted = rows_after - rows_before;
-        // Covers both intra-file duplicates and rows already present in the target table.
         let duplicates_removed = rows_source_raw.saturating_sub(rows_inserted);
 
         Ok(MergeSourceIntoTableResult {
