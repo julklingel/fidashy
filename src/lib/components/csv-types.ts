@@ -3,11 +3,9 @@ export type SelectedCsvFile = {
   name: string;
 };
 
-export type GroupWithDuplicates = {
+export type GroupProposal = {
   group_id: string;
   paths: string[];
-  duplicate_count: number;
-  total_entries: number;
 };
 
 export type GroupingResult = {
@@ -46,8 +44,43 @@ export type StandaloneGroup = {
   paths: string[];
 };
 
+export type MergedGroup = {
+  group_id: string;
+  paths: string[];
+};
+
+export type DbSourceKind = "group" | "standalone";
+
+export type DbMatchProposal = {
+  source_kind: DbSourceKind;
+  source_id: string;
+  source_paths: string[];
+  columns: string[];
+  matching_tables: string[];
+};
+
 export type GroupResolutionSummary = {
+  mergedGroups: MergedGroup[];
   mergedGroupIds: string[];
   standaloneGroups: StandaloneGroup[];
+};
+
+export type CreateTableFromSourceResult = {
+  source_kind: string;
+  source_id: string;
+  target_table: string;
+  rows_before: number;
+  rows_after: number;
+  duplicates_removed: number;
+};
+
+export type MergeSourceIntoTableResult = {
+  source_kind: string;
+  source_id: string;
+  target_table: string;
+  rows_before: number;
+  rows_after: number;
+  rows_inserted: number;
+  duplicates_removed: number;
 };
 

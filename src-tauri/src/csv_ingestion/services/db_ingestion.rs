@@ -1,129 +1,152 @@
-use crate::csv_ingestion::models::{MergeCache};
+use crate::csv_ingestion::models::{CreateTableFromSourceResult, MergeSourceIntoTableResult};
 use crate::db::DuckDbState;
-use std::collections::HashMap;
-use std::path::Path;
 
-
-
-pub fn create_new_table_from_source(
-    source_path: String,
-    preferred_table_name: String,
-    db_state: &DuckDbState,
-) -> Result<(), String> {
-    println!("Creating table '{}' from source: {}", preferred_table_name, source_path);
-
-    db_state.with_db(|conn| {
-        // We wrap the table name in double quotes to handle names with spaces or reserved keywords
-        // We wrap the source path in single quotes for DuckDB's string literal requirement
-        let sql = format!(
-            "CREATE TABLE \"{}\" AS SELECT * FROM read_csv_auto('{}')",
-            preferred_table_name, 
-            source_path
-        );
-
-        conn.execute(&sql, [])
-            .map_err(|e| format!("DuckDB Error: {}", e))?;
-
-        Ok(())
-    })?;
-
-    println!("Successfully created table '{}'", preferred_table_name);
-    Ok(())
+fn sql_quote_string(value: &str) -> String {
+    format!("'{}'", value.replace('\'', "''"))
 }
 
-// pub fn merge_source_into_table(
-//     _source_kind: ImportSourceKind,
-//     source_name: String,
-//     _source_paths: Vec<String>,
-//     target_table: String,
-//     _cache: &MergeCache,
-//     _db_state: &DuckDbState,
-// ) -> Result<DbImportActionResult, String> {
-//     Ok(DbImportActionResult {
-//         target_table: target_table.clone(),
-//         rows_written: 0,
-//         source_label: source_name.clone(),
-//         message: format!(
-//             "Dummy merge_source_into_table for '{source_name}' -> '{target_table}'"
-//         ),
-//     })
-// }
+fn sql_quote_ident(value: &str) -> String {
+    format!("\"{}\"", value.replace('\"', "\"\""))
+}
 
-pub fn find_groups_between_db_and_files(
-    paths: Vec<String>,
-    cache_ids: Vec<String>,
-    cache: &MergeCache,
+pub fn create_new_table_from_source(
+    source_kind: String,
+    source_id: String,
+    source_paths: Vec<String>,
+    preferred_table_name: String,
     db_state: &DuckDbState,
-) -> Result<(), String> {
-    // Key: Ordered Column Names | Value: List of sources (DB, File, or Cache)
-    let mut structure_groups: HashMap<Vec<String>, Vec<String>> = HashMap::new();
-
-    // --- 1. Process DuckDB Tables ---
-    db_state.with_db(|db| {
-        let mut stmt = db.prepare(
-            "SELECT table_name, column_name 
-             FROM information_schema.columns 
-             WHERE table_schema = 'main' 
-             ORDER BY table_name, ordinal_position",
-        ).map_err(|e| e.to_string())?;
-
-        let mut db_table_map: HashMap<String, Vec<String>> = HashMap::new();
-        let rows = stmt.query_map([], |row| {
-            Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
-        }).map_err(|e| e.to_string())?;
-
-        for row in rows {
-            let (table_name, col_name) = row.map_err(|e| e.to_string())?;
-            db_table_map.entry(table_name).or_default().push(col_name);
-        }
-
-        for (table_name, cols) in db_table_map {
-            structure_groups.entry(cols).or_default().push(format!("[DB] {}", table_name));
-        }
-
-        // --- 2. Process Files (via DuckDB DESCRIBE) ---
-        for path in paths {
-            // Using DESCRIBE is the most efficient way to peek at file schema in DuckDB
-            let sql = format!("DESCRIBE SELECT * FROM '{}'", path);
-            let mut stmt = db.prepare(&sql).map_err(|e| e.to_string())?;
-            
-            let file_cols: Vec<String> = stmt.query_map([], |row| {
-                row.get::<_, String>(0) // The first col of DESCRIBE is the column name
-            }).map_err(|e| e.to_string())?
-              .collect::<Result<Vec<_>, _>>()
-              .map_err(|e| e.to_string())?;
-
-            structure_groups.entry(file_cols).or_default().push(format!("[FILE] {}", path));
-        }
-
-        Ok(())
-    })?;
-
-    // --- 3. Process Polars Cache ---
-    for id in cache_ids {
-        if let Some(cached_df) = cache.get_group(&id)? {
-            // Get names from the Polars DataFrame
-            let col_names: Vec<String> = cached_df.data_frame
-                .get_column_names()
-                .into_iter()
-                .map(|s| s.to_string())
-                .collect();
-
-            structure_groups.entry(col_names).or_default().push(format!("[CACHE] {}", id));
-        }
+) -> Result<CreateTableFromSourceResult, String> {
+    if source_paths.is_empty() {
+        return Err("No source paths provided".to_string());
     }
 
-    // --- 4. Output the results ---
-    println!("--- Schema Grouping Results ---");
-    for (structure, sources) in &structure_groups {
-        if sources.len() > 1 {
-            println!("\nMATCHING GROUP FOUND:");
-            println!("Columns: {:?}", structure);
-            for source in sources {
-                println!("  -> {}", source);
-            }
-        }
+    let quoted_table = sql_quote_ident(&preferred_table_name);
+
+    let source_relation_sql = if source_paths.len() == 1 {
+        let path = sql_quote_string(&source_paths[0]);
+        format!("read_csv_auto({})", path)
+    } else {
+        let files = source_paths
+            .iter()
+            .map(|p| sql_quote_string(p))
+            .collect::<Vec<_>>()
+            .join(", ");
+
+        format!("read_csv_auto([{}], union_by_name=true)", files)
+    };
+
+    let count_before_sql = format!("SELECT COUNT(*) FROM {}", source_relation_sql);
+    let create_sql = format!(
+        "CREATE TABLE {} AS SELECT DISTINCT * FROM {}",
+        quoted_table, source_relation_sql
+    );
+    let count_after_sql = format!("SELECT COUNT(*) FROM {}", quoted_table);
+
+    db_state.with_db(|conn| {
+        let rows_before: i64 = conn
+            .query_row(&count_before_sql, [], |row| row.get(0))
+            .map_err(|e| format!("DuckDB Error (count before): {e}"))?;
+
+        conn.execute(&create_sql, [])
+            .map_err(|e| format!("DuckDB Error (create table): {e}"))?;
+
+        let rows_after: i64 = conn
+            .query_row(&count_after_sql, [], |row| row.get(0))
+            .map_err(|e| format!("DuckDB Error (count after): {e}"))?;
+
+        let rows_before = usize::try_from(rows_before)
+            .map_err(|_| "Row count before dedup was negative".to_string())?;
+        let rows_after = usize::try_from(rows_after)
+            .map_err(|_| "Row count after dedup was negative".to_string())?;
+        let duplicates_removed = rows_before.saturating_sub(rows_after);
+
+        Ok(CreateTableFromSourceResult {
+            source_kind: source_kind.clone(),
+            source_id: source_id.clone(),
+            target_table: preferred_table_name.clone(),
+            rows_before,
+            rows_after,
+            duplicates_removed,
+        })
+    })
+}
+
+pub fn merge_source_into_table(
+    source_kind: String,
+    source_id: String,
+    source_paths: Vec<String>,
+    target_table: String,
+    db_state: &DuckDbState,
+) -> Result<MergeSourceIntoTableResult, String> {
+    if source_paths.is_empty() {
+        return Err("No source paths provided".to_string());
     }
 
-    Ok(())
+    let quoted_table = sql_quote_ident(&target_table);
+
+    let source_relation_sql = if source_paths.len() == 1 {
+        let path = sql_quote_string(&source_paths[0]);
+        format!("read_csv_auto({})", path)
+    } else {
+        let files = source_paths
+            .iter()
+            .map(|p| sql_quote_string(p))
+            .collect::<Vec<_>>()
+            .join(", ");
+        format!("read_csv_auto([{}], union_by_name=true)", files)
+    };
+
+    // Count raw (pre-DISTINCT) rows from source — used to compute total duplicates eliminated.
+    let count_source_raw_sql = format!("SELECT COUNT(*) FROM {}", source_relation_sql);
+
+    // Count existing rows in the target before we insert anything.
+    let count_before_sql = format!("SELECT COUNT(*) FROM {}", quoted_table);
+
+    // Insert only rows that are new: distinct source rows minus rows already in the target.
+    // EXCEPT removes cross-table duplicates; DISTINCT collapses intra-file duplicates first.
+    let insert_sql = format!(
+        "INSERT INTO {table} SELECT * FROM (SELECT DISTINCT * FROM {source} EXCEPT SELECT * FROM {table})",
+        table = quoted_table,
+        source = source_relation_sql,
+    );
+
+    let count_after_sql = format!("SELECT COUNT(*) FROM {}", quoted_table);
+
+    db_state.with_db(|conn| {
+        let rows_source_raw: i64 = conn
+            .query_row(&count_source_raw_sql, [], |row| row.get(0))
+            .map_err(|e| format!("DuckDB Error (count source rows): {e}"))?;
+
+        let rows_before: i64 = conn
+            .query_row(&count_before_sql, [], |row| row.get(0))
+            .map_err(|e| format!("DuckDB Error (count before): {e}"))?;
+
+        conn.execute(&insert_sql, [])
+            .map_err(|e| format!("DuckDB Error (insert): {e}"))?;
+
+        let rows_after: i64 = conn
+            .query_row(&count_after_sql, [], |row| row.get(0))
+            .map_err(|e| format!("DuckDB Error (count after): {e}"))?;
+
+        let rows_source_raw = usize::try_from(rows_source_raw)
+            .map_err(|_| "Source row count was negative".to_string())?;
+        let rows_before = usize::try_from(rows_before)
+            .map_err(|_| "Row count before merge was negative".to_string())?;
+        let rows_after = usize::try_from(rows_after)
+            .map_err(|_| "Row count after merge was negative".to_string())?;
+
+        let rows_inserted = rows_after - rows_before;
+        // Covers both intra-file duplicates and rows already present in the target table.
+        let duplicates_removed = rows_source_raw.saturating_sub(rows_inserted);
+
+        Ok(MergeSourceIntoTableResult {
+            source_kind,
+            source_id,
+            target_table,
+            rows_before,
+            rows_after,
+            rows_inserted,
+            duplicates_removed,
+        })
+    })
 }

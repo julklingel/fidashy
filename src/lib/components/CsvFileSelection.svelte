@@ -1,5 +1,4 @@
 <script lang="ts">
-  	
 
 	import { invoke } from "@tauri-apps/api/core";
 	import { open } from "@tauri-apps/plugin-dialog";
@@ -8,17 +7,17 @@
 	import { toast } from "$lib/components/ui/sonner/sonner.js";
 
 	import CsvInfoHover from "$lib/components/CsvInfoHover.svelte";
-	import type { GroupWithDuplicates, SelectedCsvFile } from "$lib/components/csv-types";
+	import type { GroupProposal, SelectedCsvFile } from "$lib/components/csv-types";
 
 	type Props = {
-		groupedPaths?: GroupWithDuplicates[];
+		groupedPaths?: GroupProposal[];
 		soloPaths?: string[];
 		noGroupsFound?: boolean;
 		
 	};
 
 	let {
-		groupedPaths = $bindable<GroupWithDuplicates[]>([]),
+		groupedPaths = $bindable<GroupProposal[]>([]),
 		soloPaths = $bindable<string[]>([]),
 		noGroupsFound = $bindable(false)
 	}: Props = $props();
@@ -67,13 +66,13 @@
 		noGroupsFound = false;
 	}
 
-	async function processFiles() {
+	async function createGroupPropsals() {
 		if (selectedFiles.length === 0 || isProcessing) return;
 
 		isProcessing = true;
 		try {
 			const paths = selectedFiles.map((file) => file.path);
-			const response = await invoke<GroupWithDuplicates[]>("lazy_grouping_csv_many", { paths });
+			const response = await invoke<GroupProposal[]>("lazy_grouping_csv_many", { paths });
 			groupedPaths = response;
 			noGroupsFound = response.length === 0;
 
@@ -142,7 +141,7 @@
 			{/if}
 		</div>
 
-		<Button class="w-full" onclick={processFiles} disabled={selectedFiles.length === 0 || isProcessing}>
+		<Button class="w-full" onclick={createGroupPropsals} disabled={selectedFiles.length === 0 || isProcessing}>
 			{isProcessing ? "Processing..." : "Process"}
 		</Button>
 

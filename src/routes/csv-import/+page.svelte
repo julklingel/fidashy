@@ -1,23 +1,19 @@
 <script lang="ts">
   import CsvMergeGroupsWithDb from "$lib/components/CsvMergeGroupsWithDb.svelte";
-  import CsvFileGroupingResults from "$lib/components/CsvFileGroupingResults.svelte";
+  import CsvFileGroupingProposalCard from "$lib/components/CsvFileGroupingProposal.svelte";
   import CsvImportStepper from "$lib/components/CsvImportStepper.svelte";
-  import CsvFileSelectionAndGroupingCard from "$lib/components/CsvFileSelectionAndGrouping.svelte";
+  import CsvFileSelectionCard from "$lib/components/CsvFileSelection.svelte";
   import type {
+    GroupProposal,
     GroupResolutionSummary,
-    GroupWithDuplicates,
   } from "$lib/components/csv-types";
 
-  let groupedPaths = $state<GroupWithDuplicates[]>([]);
+  let groupedPaths = $state<GroupProposal[]>([]);
   let soloPaths = $state<string[]>([]);
   let noGroupsFound = $state(false);
   const groupedPathsCount = $derived(groupedPaths.length);
+  const hasGroupingWorkspace = $derived(groupedPathsCount > 0 || soloPaths.length > 0 || noGroupsFound);
   let resolutionSummary = $state<GroupResolutionSummary | null>(null);
-  const emptyResolutionSummary: GroupResolutionSummary = {
-    mergedGroups: [],
-    mergedGroupIds: [],
-    standaloneGroups: [],
-  };
 
   const steps = [
     {
@@ -37,15 +33,11 @@
     },
   ];
 
-  const displayedSummary = $derived.by(() => {
-    if (resolutionSummary) return resolutionSummary;
-    if (noGroupsFound) return emptyResolutionSummary;
-    return null;
-  });
+  const displayedSummary = $derived.by(() => resolutionSummary);
 
   const currentStep = $derived.by(() => {
     if (displayedSummary) return 3;
-    if (groupedPathsCount > 0) return 2;
+    if (hasGroupingWorkspace) return 2;
     return 1;
   });
 
@@ -54,7 +46,7 @@
   }
 
   $effect(() => {
-    if (groupedPathsCount === 0 && !noGroupsFound) {
+    if (!hasGroupingWorkspace) {
       resolutionSummary = null;
     }
   });
@@ -64,15 +56,15 @@
   class="flex min-h-screen flex-col items-center justify-center bg-background px-4 py-8"
 >
   <h1 class=" text-3xl font-semibold p-4">CSV - Database Import</h1>
-  <div class="flex w-full max-w-2xl flex-col items-center gap-6">
+  <div class="flex w-full max-w-5xl flex-col items-center gap-6">
     <CsvImportStepper {steps} {currentStep} />
 
     {#if displayedSummary}
-      <CsvMergeGroupsWithDb summary={displayedSummary} {soloPaths} {noGroupsFound} />
-    {:else if groupedPathsCount == 0}
-      <CsvFileSelectionAndGroupingCard bind:groupedPaths bind:soloPaths bind:noGroupsFound />
+      <CsvMergeGroupsWithDb summary={displayedSummary} />
+    {:else if !hasGroupingWorkspace}
+      <CsvFileSelectionCard bind:groupedPaths bind:soloPaths bind:noGroupsFound />
     {:else}
-      <CsvFileGroupingResults {groupedPaths} {onAllGroupsResolved} />
+      <CsvFileGroupingProposalCard {groupedPaths} {soloPaths} {onAllGroupsResolved} />
     {/if}
   </div>
 </section>
