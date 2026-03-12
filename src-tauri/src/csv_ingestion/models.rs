@@ -30,6 +30,52 @@ pub struct SkipMergeGroupResult {
     pub message: String,
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct FileDbCacheMatch {
+    pub file_path: String,
+    pub matched_table_names: Vec<String>,
+    pub matched_cache_group_ids: Vec<String>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct FindGroupsBetweenDbAndFilesResult {
+    pub matched_files: Vec<FileDbCacheMatch>,
+    pub matched_groups: Vec<CachedGroupDbMatch>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct CachedGroupDbMatch {
+    pub group_id: String,
+    pub paths: Vec<String>,
+    pub matched_table_names: Vec<String>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct MergeFileIntoTableResult {
+    pub source_path: String,
+    pub target_table: String,
+    pub rows_written: usize,
+    pub message: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct MergeCachedGroupIntoTableResult {
+    pub group_id: String,
+    pub target_table: String,
+    pub source_file_count: usize,
+    pub rows_written: usize,
+    pub message: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct CreateTableFromCachedGroupResult {
+    pub group_id: String,
+    pub created_table: String,
+    pub source_file_count: usize,
+    pub rows_written: usize,
+    pub message: String,
+}
+
 
 
 

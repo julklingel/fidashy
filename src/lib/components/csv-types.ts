@@ -46,8 +46,54 @@ export type StandaloneGroup = {
   paths: string[];
 };
 
+export type MergedGroup = {
+  group_id: string;
+  paths: string[];
+};
+
 export type GroupResolutionSummary = {
+  mergedGroups: MergedGroup[];
   mergedGroupIds: string[];
   standaloneGroups: StandaloneGroup[];
+};
+
+export type FileDbCacheMatch = {
+  file_path: string;
+  matched_table_names: string[];
+  matched_cache_group_ids: string[];
+};
+
+export type FindGroupsBetweenDbAndFilesResult = {
+  matched_files: FileDbCacheMatch[];
+  matched_groups: CachedGroupDbMatch[];
+};
+
+export type CachedGroupDbMatch = {
+  group_id: string;
+  paths: string[];
+  matched_table_names: string[];
+};
+
+export type MergeFileIntoTableResult = {
+  source_path: string;
+  target_table: string;
+  rows_written: number;
+  message: string;
+};
+
+export type MergeCachedGroupIntoTableResult = {
+  group_id: string;
+  target_table: string;
+  source_file_count: number;
+  rows_written: number;
+  message: string;
+};
+
+export type CreateTableFromCachedGroupResult = {
+  group_id: string;
+  created_table: string;
+  source_file_count: number;
+  rows_written: number;
+  message: string;
 };
 
