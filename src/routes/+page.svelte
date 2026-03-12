@@ -12,7 +12,7 @@ import { Card } from "$lib/components/ui/card/index.js";
       <div class="space-y-3">
          <h2 class="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Data and Database</h2>
          <div class="grid gap-4 md:grid-cols-2">
-            <a href="/dashboard" class="block">
+            <a href="/analyse-dashboard" class="block">
                <Card className="h-full cursor-pointer rounded-lg border p-6 transition hover:shadow-md">
                   <div class="space-y-2">
                      <h3 class="text-xl font-semibold">Analytics Dashboard</h3>
@@ -23,7 +23,7 @@ import { Card } from "$lib/components/ui/card/index.js";
                </Card>
             </a>
 
-            <a href="/dashboard" class="block">
+            <a href="/db-manager" class="block">
                <Card className="h-full cursor-pointer rounded-lg border p-6 transition hover:shadow-md">
                   <div class="space-y-2">
                      <h3 class="text-xl font-semibold">Database Manager</h3>
