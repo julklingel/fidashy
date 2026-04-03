@@ -5,8 +5,8 @@ import { Card } from "$lib/components/ui/card/index.js";
 <section class="min-h-screen bg-background px-4 py-10">
    <div class="mx-auto w-full max-w-5xl space-y-8">
       <div class="space-y-2 text-center">
-         <h1 class="text-3xl font-semibold">Welcome to Fidashy</h1>
-         <p class="text-sm text-muted-foreground">Choose a workspace to get started.</p>
+         <h1 class=" text-4xl text-primary font-semibold">Welcome to Fidashy</h1>
+         
       </div>
 
       <div class="space-y-3">
